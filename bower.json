@@ -1,0 +1,8 @@
+{
+  "name": "eelnss",
+  "version": "0.0.1",
+  "main": "eelnss.js",
+  "keywords": ["util", "functional", "lenses", "client", "browser"],
+  "ignore" : ["docs", "test", "*.yml", "*.map",
+              "CNAME", "index.html", "favicon.ico", "CONTRIBUTING.md"]
+}
