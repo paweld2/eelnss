@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>eelnss.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>eelnss.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <pre><code>eelnss.js
+(c) <span class="hljs-number">20014</span>-<span class="hljs-number">2019</span> Pawel Cesar Sanjuan Szklarz
+eelnss may be freely distributed under the MIT license.
+</code></pre>
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(root)</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <h2 id="baseline-setup-inspired-in-underscore-js">Baseline setup, inspired in underscore.js</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Establish the root object, <code>window</code> in the browser, or <code>exports</code> on the server.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _ = root._ || <span class="hljs-built_in">require</span>(<span class="hljs-string">'underscore'</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <h2 id="util-functions">Util functions</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>Assertion util function.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_assert</span><span class="hljs-params">(condition, message)</span> {</span>
+        <span class="hljs-keyword">if</span> (!condition) {
+            <span class="hljs-keyword">throw</span> message || <span class="hljs-string">"Assertion failed"</span>;
+        }
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <h2 id="lenses-definitions">Lenses definitions</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>Main definition function. It take the setter and getter to build a len.
+Types are not respected, but for documentation we assume that len has type Len[A,B]</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _lenDef = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(get, set)</span> {</span>
+        <span class="hljs-keyword">var</span> f = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
+            <span class="hljs-keyword">return</span> get(a);
+        };</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>get: A =&gt; B</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        f.get = f;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>set: (B , A) =&gt; A</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        f.set = set;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>mod: (B=&gt;B , A) =&gt; A</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        f.mod = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(f, a)</span> {</span>
+            <span class="hljs-keyword">return</span> set(f(get(a)), a);
+        };</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>For Len[A,B] define a equivalence class on A based on equivalence on B.</p>
+<p>‘eqClass’ create a function A =&gt; Boolean, that will be true iff:
+len.eqClass(value)( A ) === true  &lt;=&gt; len.get(A) === value</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        f.eqClass = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(valueToMatch)</span> {</span>
+            <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">return</span> f.get(a) === valueToMatch;
+            };
+        };</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>Lenses left composition
+Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        f.andThen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(lenBC)</span> {</span>
+            <span class="hljs-keyword">return</span> _lenDef(
+                _.compose(lenBC, f),
+                <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(c, a)</span> {</span>
+                    <span class="hljs-keyword">return</span> f.mod(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
+                        <span class="hljs-keyword">return</span> lenBC.set(c, b);
+                    }, a);
+                }
+            );
+        };</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Right composition.
+Len[A,B] &lt;~ Len[C,A] == Len[C,A] ~&gt; Len[A,B] =&gt; Len[C,B]</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        f.compose = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(LenCA)</span> {</span>
+            <span class="hljs-keyword">return</span> LenCA.andThen(f);
+        };
+        <span class="hljs-keyword">return</span> f;
+    };</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>Nil Len Len[undefined,A], always return undefined, and don’t change the container object A.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _nilLen = _lenDef(
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
+        },
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b, a)</span> {</span>
+            <span class="hljs-keyword">return</span> a;
+        }
+    );</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>The identity len Len[A,A].</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _idLen = _lenDef(
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
+            <span class="hljs-keyword">return</span> a;
+        },
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(newa, a)</span> {</span>
+            <span class="hljs-keyword">return</span> newa;
+        }
+    );</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <p>Field Len template:
+Extract from a object the value over key ‘fieldName’.</p>
+<p>TODO expline fillEmpty</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _fieldLenTemplate = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(fillEmpty)</span> {</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(fieldName)</span> {</span>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fGet</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">if</span> (_.isUndefined(a)) {
+                    <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
+                }
+                <span class="hljs-keyword">if</span> (_.isArray(a)) {
+                    <span class="hljs-keyword">return</span> _.map(a, fGet);
+                }
+                <span class="hljs-keyword">var</span> value = a[fieldName];
+                <span class="hljs-keyword">if</span> (fillEmpty &amp;&amp; _.isUndefined(value)) {
+                    <span class="hljs-keyword">return</span> {};
+                }
+                <span class="hljs-keyword">return</span> value;
+            };
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fSet</span><span class="hljs-params">(b, a)</span> {</span>
+                <span class="hljs-keyword">if</span> (_.isUndefined(b)) {
+                    <span class="hljs-keyword">return</span> _.omit(a, fieldName);
+                }
+                <span class="hljs-keyword">if</span> (_.isArray(a)) {
+                    _assert(_.isArray(b), <span class="hljs-string">"Field set mismatch of array levels. Field name:"</span> + fieldName + <span class="hljs-string">". Arguments:"</span> + a + <span class="hljs-string">" , "</span> + b);
+                    _assert(b.length === a.length, <span class="hljs-string">"Field set mismatch arrays length.Field name:"</span> + fieldName + <span class="hljs-string">". Arguments:"</span> + a + <span class="hljs-string">" , "</span> + b);
+                    <span class="hljs-keyword">return</span> _.zip(b, a).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b_a)</span> {</span>
+                        <span class="hljs-keyword">return</span> fSet(b_a[<span class="hljs-number">0</span>], b_a[<span class="hljs-number">1</span>]);
+                    });
+                }
+                <span class="hljs-keyword">var</span> extendO = {};
+                extendO[fieldName] = b;
+                <span class="hljs-keyword">return</span> _.chain(a).clone().extend(extendO).value();
+            };
+            <span class="hljs-keyword">return</span> _lenDef(fGet, fSet);
+        }
+    };
+
+    <span class="hljs-keyword">var</span> _setLen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(eqClassValue)</span> {</span>
+        <span class="hljs-keyword">return</span> _lenDef(
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(l)</span> {</span>
+                <span class="hljs-keyword">return</span> _.filter(l, eqClassValue);
+            },
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(e, l)</span> {</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>validate that values in e belong to eqClass</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                _assert(_.chain(e).reject(eqClassValue).value().length === <span class="hljs-number">0</span>, <span class="hljs-string">"Not all values belong to equality class"</span>);
+                <span class="hljs-keyword">var</span> filtered = _.chain(l).reject(eqClassValue);
+                <span class="hljs-keyword">if</span> (_.isUndefined(e)) {
+                    <span class="hljs-keyword">return</span> filtered.value();
+                } <span class="hljs-keyword">else</span> {
+                    <span class="hljs-keyword">return</span> filtered.union(e).value();
+                }
+            }
+        );
+    };
+
+    <span class="hljs-keyword">var</span> partSetLenRegexp = <span class="hljs-regexp">/\[(:.*)\]/gi</span>;
+    <span class="hljs-keyword">var</span> andThenComposition = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(currLen, nextPart)</span> {</span>
+        <span class="hljs-keyword">return</span> currLen.andThen(nextPart);
+    };</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>from a string “:param1:param2”
+create a list of setLens  [SetLen(“param1”),SetLen(“param1”)]
+and then build a lazy composition ID andThen SetLen(“param1”)(v1) andThen SetLen(“param1”)(v2)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> setPartBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listOfSetParameters)</span> {</span>
+        <span class="hljs-keyword">var</span> criteriaList = listOfSetParameters.substr(<span class="hljs-number">1</span>).split(<span class="hljs-string">":"</span>);
+        <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(params)</span> {</span>
+            <span class="hljs-keyword">return</span> _.chain(criteriaList).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(setParam)</span> {</span>
+                <span class="hljs-keyword">return</span> _setLen(_fieldLenTemplate(<span class="hljs-literal">true</span>)(setParam).eqClass(params[setParam]));
+            }).reduce(andThenComposition, _idLen).value();
+        }
+    };
+    <span class="hljs-keyword">var</span> fieldPartBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(fieldName)</span> {</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(params)</span> {</span>
+            <span class="hljs-keyword">return</span> _fieldLenTemplate(<span class="hljs-literal">true</span>)(fieldName);
+        }
+    };
+
+    _.mixin({</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>Raw definition of a len
+Len[A,B]</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        lenDef: _lenDef,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>Len[A,Nil]</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        lenNil: _nilLen,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>Len[A,A]</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        lenId: _idLen,
+        fieldLen: _fieldLenTemplate(<span class="hljs-literal">false</span>),</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>Len[Set[E], ~eqClass[E]]
+set is stored in an array, but order in not guaranteed (and it changes!!)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        setLen: _setLen,
+        buildLen: <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(lenExpression)</span> {</span>
+            <span class="hljs-keyword">var</span> parts = lenExpression.split(<span class="hljs-string">"."</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>a list of partial lens definitions with binding to parameters
+each element is has type
+Map<String,Object> -&gt; Len</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">var</span> lenDefinition = _.chain(parts).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(part)</span> {</span>
+                <span class="hljs-keyword">var</span> setParams = partSetLenRegexp.exec(part);
+                <span class="hljs-keyword">if</span> (setParams !== <span class="hljs-literal">null</span>) {
+                    <span class="hljs-keyword">return</span> setPartBuilder(setParams[<span class="hljs-number">1</span>]);
+                } <span class="hljs-keyword">else</span> {
+                    <span class="hljs-keyword">return</span> fieldPartBuilder(part);
+                }
+            });
+
+            <span class="hljs-keyword">var</span> def = {
+                bind: <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(params)</span> {</span>
+                    <span class="hljs-keyword">return</span> lenDefinition.map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(partialLen)</span> {</span>
+                        <span class="hljs-keyword">return</span> partialLen(params);
+                    }).reduce(andThenComposition, _idLen).value();
+                }
+            };
+            <span class="hljs-keyword">return</span> def;
+        }
+    });
+})(<span class="hljs-keyword">this</span>);</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

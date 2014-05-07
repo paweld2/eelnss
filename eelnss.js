@@ -8,12 +8,21 @@
     // Establish the root object, `window` in the browser, or `exports` on the server.
     var _ = root._ || require('underscore');
 
+    // Util functions
+    // ---------------
+    // Assertion util function.
     function _assert(condition, message) {
         if (!condition) {
             throw message || "Assertion failed";
         }
     }
 
+
+
+    // Lenses definitions
+    // ------------------
+    // Main definition function. It take the setter and getter to build a len.
+    // Types are not respected, but for documentation we assume that len has type Len[A,B]
     var _lenDef = function (get, set) {
         var f = function (a) {
             return get(a);
@@ -27,12 +36,17 @@
             return set(f(get(a)), a);
         };
 
+        // For Len[A,B] define a equivalence class on A based on equivalence on B.
+        //
+        // 'eqClass' create a function A => Boolean, that will be true iff:
+        // len.eqClass(value)( A ) === true  <=> len.get(A) === value
         f.eqClass = function (valueToMatch) {
             return function (a) {
                 return f.get(a) === valueToMatch;
             };
         };
 
+        // Lenses left composition
         // Len[A,B] ~> Len[B,C] => Len[A,C]
         f.andThen = function (lenBC) {
             return _lenDef(
@@ -44,6 +58,7 @@
                 }
             );
         };
+        // Right composition.
         // Len[A,B] <~ Len[C,A] == Len[C,A] ~> Len[A,B] => Len[C,B]
         f.compose = function (LenCA) {
             return LenCA.andThen(f);
@@ -51,6 +66,7 @@
         return f;
     };
 
+    // Nil Len Len[undefined,A], always return undefined, and don't change the container object A.
     var _nilLen = _lenDef(
         function (a) {
             return undefined;
@@ -59,6 +75,8 @@
             return a;
         }
     );
+
+    // The identity len Len[A,A].
     var _idLen = _lenDef(
         function (a) {
             return a;
@@ -68,6 +86,10 @@
         }
     );
 
+    // Field Len template:
+    // Extract from a object the value over key 'fieldName'.
+    //
+    // TODO expline fillEmpty
     var _fieldLenTemplate = function (fillEmpty) {
         return function (fieldName) {
             function fGet(a) {
