@@ -18,14 +18,13 @@
     }
 
 
-
     // Lenses definitions
     // ------------------
     // Main definition function. It take the setter and getter to build a len.
     // Types are not respected, but for documentation we assume that len has type Len[A,B]
     var _lenDef = function (get, set) {
-        var f = function (a) {
-            return get(a);
+        var f = function (a, options) {
+            return get(a, options);
         };
         // get: A => B
         f.get = f;
@@ -89,39 +88,38 @@
     // Field Len template:
     // Extract from a object the value over key 'fieldName'.
     //
-    // TODO expline fillEmpty
-    var _fieldLenTemplate = function (fillEmpty) {
-        return function (fieldName) {
-            function fGet(a) {
-                if (_.isUndefined(a)) {
-                    return undefined;
-                }
-                if (_.isArray(a)) {
-                    return _.map(a, fGet);
-                }
-                var value = a[fieldName];
-                if (fillEmpty && _.isUndefined(value)) {
-                    return {};
-                }
-                return value;
-            };
-            function fSet(b, a) {
-                if (_.isUndefined(b)) {
-                    return _.omit(a, fieldName);
-                }
-                if (_.isArray(a)) {
-                    _assert(_.isArray(b), "Field set mismatch of array levels. Field name:" + fieldName + ". Arguments:" + a + " , " + b);
-                    _assert(b.length === a.length, "Field set mismatch arrays length.Field name:" + fieldName + ". Arguments:" + a + " , " + b);
-                    return _.zip(b, a).map(function (b_a) {
-                        return fSet(b_a[0], b_a[1]);
-                    });
-                }
-                var extendO = {};
-                extendO[fieldName] = b;
-                return _.chain(a).clone().extend(extendO).value();
-            };
-            return _lenDef(fGet, fSet);
-        }
+    var _fieldLenTemplate = function (fieldName, options) {
+        function fGet(a) {
+            var opt = options || {};
+            var fillEmpty = opt.fillEmpty || false;
+            if (_.isUndefined(a)) {
+                return undefined;
+            }
+            if (_.isArray(a)) {
+                return _.map(a, fGet);
+            }
+            var value = a[fieldName];
+            if (fillEmpty && _.isUndefined(value)) {
+                return {};
+            }
+            return value;
+        };
+        function fSet(b, a) {
+            if (_.isUndefined(b)) {
+                return _.omit(a, fieldName);
+            }
+            if (_.isArray(a)) {
+                _assert(_.isArray(b), "Field set mismatch of array levels. Field name:" + fieldName + ". Arguments:" + a + " , " + b);
+                _assert(b.length === a.length, "Field set mismatch arrays length.Field name:" + fieldName + ". Arguments:" + a + " , " + b);
+                return _.zip(b, a).map(function (b_a) {
+                    return fSet(b_a[0], b_a[1]);
+                });
+            }
+            var extendO = {};
+            extendO[fieldName] = b;
+            return _.chain(a).clone().extend(extendO).value();
+        };
+        return _lenDef(fGet, fSet);
     };
 
     var _setLen = function (eqClassValue) {
@@ -153,14 +151,31 @@
         var criteriaList = listOfSetParameters.substr(1).split(":");
         return function (params) {
             return _.chain(criteriaList).map(function (setParam) {
-                return _setLen(_fieldLenTemplate(true)(setParam).eqClass(params[setParam]));
+                return _setLen(_fieldLenTemplate(setParam, {fillEmpty: true}).eqClass(params[setParam]));
             }).reduce(andThenComposition, _idLen).value();
         }
     };
     var fieldPartBuilder = function (fieldName) {
         return function (params) {
-            return _fieldLenTemplate(true)(fieldName);
+            return _fieldLenTemplate(fieldName, {fillEmpty: true});
         }
+    };
+
+
+    var _telescope = function (listOfLens) {
+        var teleGet = function (a) {
+            return _.map(listOfLens, function (singleLen) {
+                return singleLen.get(a);
+            });
+        };
+        var teleSet = function (b, a) {
+            return _.reduce(_.zip(listOfLens, b), function (res, len_value) {
+                var len = len_value[0];
+                var value = len_value[1];
+                return len.set(value, res);
+            }, a);
+        };
+        return _lenDef(teleGet, teleSet);
     };
 
     _.mixin({
@@ -170,8 +185,8 @@
         // Len[A,Nil]
         lenNil: _nilLen,
         // Len[A,A]
-        lenId: _idLen,
-        fieldLen: _fieldLenTemplate(false),
+        lenIdentity: _idLen,
+        fieldLen: _fieldLenTemplate,
         // Len[Set[E], ~eqClass[E]]
         // set is stored in an array, but order in not guaranteed (and it changes!!)
         setLen: _setLen,
@@ -198,6 +213,7 @@
                 }
             };
             return def;
-        }
+        },
+        telescope: _telescope
     });
 })(this);
