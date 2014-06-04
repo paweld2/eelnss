@@ -57,7 +57,10 @@
             return { expected: 100 + i};
         });
         lensesLawTest(_.lenIdentity, containerBuilder, testValues);
-        lensesPutPutLawTest(_.lenIdentity, containerBuilder, [{ expected: 1}, { expected: 2}]);
+        lensesPutPutLawTest(_.lenIdentity, containerBuilder, [
+            { expected: 1},
+            { expected: 2}
+        ]);
     });
 
     test('Field len', function () {
@@ -67,6 +70,20 @@
         };
         lensesLawTest(_.fieldLen("anyName"), containerBuilder, anyTypeTestValues);
         lensesPutPutLawTest(_.fieldLen("anyName"), containerBuilder, anyTypeTestValues);
+    });
+    test('Field len on lists', function () {
+        var containerBuilder = function (howmany) {
+            return _.range(howmany).map(function (i) {
+                return {anyName: i};
+            });
+        };
+
+        deepEqual(_.fieldLen("anyName").get(containerBuilder(10)), _.range(10), "field name on list");
+        deepEqual(_.fieldLen("anyName").set(['a', 'b', 'c'], containerBuilder(3)), [
+            {anyName: 'a'},
+            {anyName: 'b'},
+            {anyName: 'c'}
+        ], "field name set on list");
     });
 
 })();

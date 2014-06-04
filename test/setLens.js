@@ -1,6 +1,6 @@
 (function () {
 
-    module('Set lenses on matchers');
+    module('Set lenses on equivalence classes');
     var emptySetBuilder = function () {
         return [];
     };

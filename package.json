@@ -1,27 +1,30 @@
 {
-  "name"          : "eelnss",
-  "description"   : "sort lenses.",
-  "homepage"      : "http://eelnss.org",
-  "keywords"      : ["util", "functional", "lenses", "client", "browser"],
-  "author"        : "Pawel Cesar Sanjuan Szklarz <paweld2@gmail.com>",
-  "repository"    : {"type": "git", "url": "git://github.com/paweld2/eelnss.git"},
-  "main"          : "eelnss.js",
-  "version"       : "0.0.1",
-  "devDependencies": {
-    "docco": "0.6.x",
-    "phantomjs": "1.9.7-5",
-    "uglify-js": "2.4.x"
-  },
-  "scripts": {
-    "test": "phantomjs test/vendor/runner.js test/index.html?noglobals=true",
-    "build": "uglifyjs eelnss.js -c \"evaluate=false\" --comments \"/    .*/\" -m --source-map eelnss-min.map -o eelnss-min.js",
-    "doc": "docco eelnss.js"
-  },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://raw.github.com/paweld2/eelnss/master/LICENSE"
-    }
-  ],
-  "files"         : ["eelnss.js", "eelnss-min.js", "LICENSE"]
+    "name": "eelnss",
+    "description": "sort lenses.",
+    "homepage": "http://eelnss.org",
+    "keywords": ["util", "functional", "lenses", "client", "browser"],
+    "author": "Pawel Cesar Sanjuan Szklarz <paweld2@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/paweld2/eelnss.git"
+    },
+    "main": "eelnss.js",
+    "version": "0.0.2",
+    "devDependencies": {
+        "docco": "0.6.x",
+        "phantomjs": "1.9.7-5",
+        "uglify-js": "2.4.x"
+    },
+    "scripts": {
+        "test": "phantomjs test/vendor/runner.js test/index.html?noglobals=true",
+        "build": "uglifyjs eelnss.js -c \"evaluate=false\" --comments \"/    .*/\" -m --source-map eelnss-min.map -o eelnss-min.js",
+        "doc": "docco eelnss.js"
+    },
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "https://raw.github.com/paweld2/eelnss/master/LICENSE"
+        }
+    ],
+    "files": ["eelnss.js", "eelnss-min.js", "LICENSE"]
 }
