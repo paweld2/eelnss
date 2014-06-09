@@ -91,9 +91,9 @@ var checkContextLensesLaws = function (clen, containerBuilder, listOfValues) {
     // The context part must by identical
     var mutatedListOfValues = mutateValuesOnContext(listOfValues, cLen.specification.contextSize, cLen.specification.valueSize);
     propEqual(
-        len.set(v2, len.set(v1, containerBuilder())),
-        len.set(v2, containerBuilder()),
-        " set(v2,set(v1,c)) == set(v2,c) on container c=" + JSON.stringify(containerBuilder()) + " for values: v1=" + JSON.stringify(v1) + ", v2=" + JSON.stringify(v2)
+        len.cset(mutatedListOfValues, len.cset(listOfValues, containerBuilder())),
+        len.cset(mutatedListOfValues, containerBuilder()),
+        " cset(v2,cset(v1,c)) == cset(v2,c) on "
     );
 };
 

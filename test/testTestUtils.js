@@ -48,7 +48,7 @@
             var keySetSize = a_b[0];
             var listSize = a_b[1];
             var lenValues = lensValuesGenerator(keySetSize, listSize);
-            ok(_.isArray(lenValues), "list of values is array for (" + keySetSize + "," + listSize);
+            ok(_.isArray(lenValues), "list of values is array for (" + keySetSize + "," + listSize + ")");
             strictEqual(lenValues.length, Math.pow(keySetSize, listSize), "len of the values is keySetSize^contextSize");
             _.each(lenValues, function (valueList) {
                 ok(_.isArray(valueList), "each value is an array : " + valueList);
@@ -70,9 +70,7 @@
         strictEqual(mutated[0][1], values[0][1]);
         notEqual(mutated[0][2], values[0][2]);
 
-//        var v2 = lensValuesGenerator(5,5);
-//        var m2 = mutateValuesOnContext(v2,2,3);
-        // TODO zip and test combinations
+
     })
 
 
