@@ -21,9 +21,17 @@
     // ------------------
     // Main definition function. It take the setter and getter to build a len.
     // Types are not respected, but for documentation we assume that len has type Len[A,B]
-    var _lenDef = function (get, set) {
+    var _lenDef = function (get, set, valueSize) {
         var f = function (a, options) {
             return get(a, options);
+        };
+        // The size of the extracted value:
+        //  0  - null object always
+        //  1  - single reference
+        // n>2 - a list of n values.
+        // TODO: size for composition of telescopes
+        f.specification = {
+            valueSize: valueSize || 1
         };
         // get: A => B
         f.get = f;
@@ -43,7 +51,9 @@
                     return f.mod(function (b) {
                         return lenBC.set(c, b);
                     }, a);
-                }
+                },
+                // TODO: size for composition of telescopes is not correct.
+                f.specification.valueSize * lenBC.specification.valueSize
             );
         };
         // Right composition.
@@ -105,7 +115,8 @@
         },
         function (b, a) {
             return a;
-        }
+        },
+        0
     );
     // Identity len
     // ------------------
@@ -116,8 +127,13 @@
         },
         function (newa, a) {
             return newa;
-        }
+        },
+        1
     );
+    // Optimization for id len
+    _idLen.andThen = function (lenBC) {
+        return lenBC;
+    };
 
 
     // Field Len template:
@@ -132,11 +148,8 @@
             if (_.isUndefined(a)) {
                 return undefined;
             }
-            // Arrays are not valued fieldLen containers.
-            // We assume that a list must be mapped deeply.
-            if (_.isArray(a)) {
-                return _.map(a, fGet);
-            }
+            // Arrays are not valid fieldLen containers.
+            _assert(!_.isArray(a), "Arrays are not valid fieldLen containers. Field name:" + fieldName + ". Argument:" + a);
             var value = a[fieldName];
             // If options.fillEmpty===true, then a empty value is filled with a {} object. This is used for nested lens zeros.
             if (fillEmpty === true && _.isUndefined(value)) {
@@ -145,120 +158,49 @@
             return value;
         };
         function fSet(b, a) {
+            // Arrays are not valid fieldLen containers.
+            _assert(!_.isArray(a), "Arrays are not valid fieldLen containers. Field name:" + fieldName + ". Argument:" + a);
             if (_.isUndefined(b)) {
                 return _.omit(a, fieldName);
             }
-            // Arrays are not valued fieldLen containers.
-            // We assume that a list must be mapped deeply.
-            if (_.isArray(a)) {
-                // We verify that setter values map correctly to array values.
-                _assert(_.isArray(b), "Field set mismatch of array levels. Field name:" + fieldName + ". Arguments:" + a + " , " + b);
-                _assert(b.length === a.length, "Field set mismatch arrays length.Field name:" + fieldName + ". Arguments:" + a + " , " + b);
-                return _.zip(b, a).map(function (b_a) {
-                    return fSet(b_a[0], b_a[1]);
-                });
-            }
-            // For objects, the field value is set.
             var extendO = {};
             extendO[fieldName] = b;
             return _.chain(a).clone().extend(extendO).value();
         };
-        return _lenDef(fGet, fSet);
+        return _lenDef(fGet, fSet, 1);
     };
 
 
-    // Map len
-    // -------
-    // Get/Set objects from a map using the objects id key.
-    // the structure on the container is
-    // { "id_value" : { "id_key" : "id_value"} }
-    var _mapLen = function (mapKeyName) {
-        var keyLen = _fieldLenTemplate(mapKeyName);
-        var _bindObject = function (mapValue) {
-            var key = keyLen.get(mapValue);
-            return _lenDef(
-                function (a) {
-                    return a[key];
-                },
-                function (b, a) {
-                    // Verify that set value has the same keyValue.
-                    _assert(keyLen.get(b) === key, "Map len set with a mismatching key value. Bind value:" + mapValue + ". Set value:" + b + ". Container " + a);
-                    a[key] = b;
-                    return a;
-                }
-            );
-        }
-        return {
-            bind: _bindObject
-        };
-    };
-
-    // Set Len
-    // =======
-    // Javascript don't have a native Set representation, so Arrays are used.
-    // Order is not preserved but is stable.
-    //
-    // A set len extract a subset of a set. The subset is defined by a equivalence class.
-    // See eqClass method on lens for equivalence classes definition.
-    var _setLen = function (eqClass) {
-        return _lenDef(
-            // Getter
-            function (l) {
-                // Select the values that belong to eqClass.
-                return eqClass.select(l);
-            },
-            // Setter
-            function (e, l) {
-                // Verify that values in e belong to eqClass
-                _assert(eqClass.filter(e).length === 0, "Not all values belong to equality class");
-                // Remove current values.
-                var valuesWithoutEqClass = eqClass.filter(l);
-                if (_.isUndefined(e)) {
-                    return valuesWithoutEqClass;
-                } else {
-                    return _.union(valuesWithoutEqClass, e);
-                }
-            }
-        );
-    };
-
-
-    // Telescope:
+    // Telescope: List of lens
     // ------------------
     // Accept a list of lens, and execute folded getters and setters to/from lists of value
-    var _telescope = function (listOfLensExpressions) {
-        _assert(_.isArray(listOfLensExpressions), "A list of lens is expected");
-        // We assume that some lens may be complex lens with parameters.
-        var _bindOperation = function (parameters) {
-            var listOfLens = _.map(listOfLensExpressions, function (lenExpr) {
-                return lenExpr.bind(parameters)
-            });
-            // For each len, extract the value form the container.
-            // The result is a list of extracted values.
-            var teleGet = function (a) {
-                return _.map(listOfLens, function (singleLen) {
-                    return singleLen.get(a);
-                });
-            };
-            // Accept a list of values, and executed setter on each len.
-            var teleSet = function (b, a) {
-                return _.reduce(_.zip(listOfLens, b), function (res, len_value) {
-                    var len = len_value[0];
-                    var value = len_value[1];
-                    return len.set(value, res);
-                }, a);
-            };
-            return _lenDef(teleGet, teleSet);
-        };
-        return {
-            bind: _bindOperation
-        };
+    var _telescope = function (listOfLens) {
+        _assert(_.isArray(listOfLens), "A list of lens is expected");
 
+        // For each len, extract the value form the container.
+        // The result is a list of extracted values.
+        var getTelescope = function (a) {
+            return _.map(listOfLens, function (singleCLen) {
+                return singleCLen.get(a);
+            });
+        };
+        var setTelescope = function (b, a) {
+            // setting undefined will empty values for the nested lenses.
+            var values = b || _.range(listOfLens.length).map(function () {
+                return undefined;
+            });
+            return _.reduce(_.zip(listOfLens, values), function (res, len_value) {
+                var len = len_value[0];
+                var value = len_value[1];
+                return len.set(value, res);
+            }, a);
+        };
+        return _lenDef(getTelescope, setTelescope, listOfLens.length);
     };
 
 
     // Context lenses definitions
-    // ------------------
+    // ==========================
     //
     // Context Lenses accept not only a value to set/get, but also a context that parametrizes the final len to use.
     //
@@ -279,20 +221,59 @@
     //     contextMapLen.cset(key,value, Map)
     // updates the map.
     //
-    // A context len knows how to extract all possible contexts values from a container. It must be provided during clen definition.
+    // A context len knows how to extract all possible contexts values from a container. It must be provided during clen definition in contextExtractor.
+    // contextExtractor provide a list of all possible context values: [[c1,c2,x],[c1,c2,y],....]
 
-    var _contextLenDef = function (cget, cset, contextSize, contextExtractor) {
-        var clen = function (a) {
-            return cget(a);
+    var _contextLenDef = function (cget, cset, contextExtractor, contextSize, valueSize) {
+        var clen = function (context, a) {
+            return cget(context, a);
         };
         // The context parameter is a list of parameters with fixed size.
         // The context size information is for validation and composition.
-        clen.size = contextSize;
+
+        clen.specification = {
+            contextSize: contextSize,
+            valueSize: valueSize,
+            size: (valueSize + contextSize)
+        };
         clen.cget = cget;
         clen.cset = cset;
         clen.extract = contextExtractor;
+
+        // Operation on list of [Context, Value]
+        // lget extract all possible context using the extractor
+        clen.lget = function (container) {
+            if (clen.specification.contextSize === 0) {
+                // single len, extract [[value]];
+                return [
+                    [clen.cget([], container)]
+                ];
+            }
+            var listOfContext = clen.extract(container);
+            var listOfContextAndValue = _.chain(listOfContext).map(function (context) {
+                return _.chain(context).union([clen.cget(context, container)]).flatten(true).value();
+            }).value();
+            return listOfContextAndValue;
+        };
+        // lset sets the values on all provided contexts
+        clen.lset = function (listOfContextAndValue, container) {
+            if (clen.specification.contextSize === 0 && listOfContextAndValue.length === 0) {
+                // single len, set of [] must be mapped to set of [[undefined]]
+                return clen.cset([], undefined, container);
+            }
+            return _.chain(listOfContextAndValue)
+                .reduce(function (currContainer, contextAndValue) {
+                    var context = contextAndValue.slice(0, contextSize);
+                    var value = contextAndValue.slice(contextSize, clen.specification.size);
+                    if (clen.specification.valueSize === 1) {
+                        return clen.cset(context, value[0], currContainer);
+                    }
+                    return clen.cset(context, value, currContainer);
+
+                }, container).value();
+        };
         // The bind operation just fix the context parameter and return a len.
-        clen.bind = function (context) {
+        clen.bindContext = function (context) {
             _assert(context.length === contextSize, "context size error");
             var bindedGet = function (a) {
                 return cget(context, a);
@@ -300,7 +281,18 @@
             var bindedSet = function (b, a) {
                 return cset(context, b, a);
             };
-            return _lenDef(bindedGet, bindedSet);
+            return _lenDef(bindedGet, bindedSet, clen.specification.valueSize);
+        };
+        clen.bindContextValue = function (contextAndValue) {
+            _assert(contextAndValue.length === clen.specification.size, "context size error");
+            var _context = contextAndValue.slice(0, contextSize);
+            var _value = contextAndValue.slice(contextSize);
+            var _len = clen.bindContext(_context);
+            return {
+                len: _len,
+                value: _value,
+                context: _context
+            };
         };
         // Modification with a given context
         clen.mod = function (context, f, a) {
@@ -312,39 +304,90 @@
         // Context parameters are assumed to be a list of values [l_1,l_2,..,l_n], [r_1,r_2,..,r_m], .
         // The composed context is then [l_1,l_2,..,l_n,r_1,r_2,..,r_m].
         clen.cAndThen = function (clenBC) {
-            var compositionContextSize = contextSize + clenBC.size;
-            // TODO: optimalization when context size is 0 are possible
-            var composedCget = function (context, a) {
-                // validation of context size is realized in the deepest level, so ignore errors here.
-                //  _assert(context.length === compositionContextSize, "context size error");
-                var ABcontext = context.slice(0, contextSize);
-                var BCcontext = context.slice(contextSize);
-                return clenBC(BCcontext, cget(ABcontext, a));
+            if (contextSize === 0) {
+                // single len, compose without context
+                return simpleAndThen();
+            }
+            if (clenBC.specification.contextSize === 0) {
+                return simpleInverseAndThen();
+            }
+            return realAndThen();
+
+            function simpleAndThen() {
+                var simpleCget = function (context, a) {
+                    return clenBC.cget(context, clen.cget([], a));
+                };
+                var simpleCset = function (context, c, a) {
+                    return clen.mod([], function (b) {
+                        return clenBC.cset(context, c, b);
+                    }, a);
+                };
+                var simpleExtract = function (a) {
+                    return clenBC.extract(clen.cget([], a));
+                };
+                return _contextLenDef(
+                    simpleCget,
+                    simpleCset,
+                    simpleExtract,
+                    clenBC.specification.contextSize,
+                    clenBC.specification.valueSize
+                );
             };
-            var composedCset = function (context, c, a) {
-                // validation of context size is realized in the deepest level, so ignore errors here.
-                // _assert(context.length === compositionContextSize, "context size error");
-                var ABcontext = context.slice(0, contextSize);
-                var BCcontext = context.slice(contextSize);
-                return clen.mod(ABcontext, function (b) {
-                    return clenBD.set(BCcontext, c, b);
-                });
+            function simpleInverseAndThen() {
+                var simpleCget = function (context, a) {
+                    return clenBC.cget([], clen.cget(context, a));
+                };
+                var simpleCset = function (context, c, a) {
+                    return clen.mod(context, function (b) {
+                        return clenBC.cset([], c, b);
+                    }, a);
+                };
+                return _contextLenDef(
+                    simpleCget,
+                    simpleCset,
+                    clen.extract,
+                    clen.specification.contextSize,
+                    clenBC.specification.valueSize
+                );
             };
-            var composedExtactor = function (a) {
-                var bContexts = contextExtractor(a);
-                return _.chain(bContexts).map(function (singleBContext) {
-                    var cContext = clenBC.extract(cget(singleBContext, a));
-                    return _.map(cContext, function (singleCContext) {
-                        return  _.union(singleBContext, singleCContext);
-                    });
-                }).flatten(true).value();
+            function realAndThen() {
+                var compositionContextSize = contextSize + clenBC.specification.contextSize;
+                var compositionValueSize = valueSize * clenBC.specification.valueSize;
+
+                var composedCget = function (context, a) {
+                    // validation of context size is realized in the deepest level, so ignore errors here.
+                    //  _assert(context.length === compositionContextSize, "context size error");
+                    var ABcontext = context.slice(0, contextSize);
+                    var BCcontext = context.slice(contextSize);
+                    return clenBC(BCcontext, cget(ABcontext, a));
+                };
+                var composedCset = function (context, c, a) {
+                    // validation of context size is realized in the deepest level, so ignore errors here.
+                    // _assert(context.length === compositionContextSize, "context size error");
+                    var ABcontext = context.slice(0, contextSize);
+                    var BCcontext = context.slice(contextSize);
+                    return clen.mod(ABcontext, function (b) {
+                        return clenBC.cset(BCcontext, c, b);
+                    }, a);
+                };
+                var composedExtactor = function (a) {
+                    var bContexts = contextExtractor(a);
+                    var contextFinal = _.chain(bContexts).map(function (singleBContext) {
+                        var cContext = clenBC.extract(cget(singleBContext, a));
+                        return _.map(cContext, function (singleCContext) {
+                            return  _.union(singleBContext, singleCContext);
+                        });
+                    }).flatten(true).value();
+                    return contextFinal;
+                };
+                return _contextLenDef(
+                    composedCget,
+                    composedCset,
+                    composedExtactor,
+                    compositionContextSize,
+                    compositionValueSize
+                );
             };
-            return _contextLenDef(
-                composedCget,
-                composedCset,
-                compositionContextSize,
-                composedExtactor
-            );
         };
         // Right composition.
         // CLen[A,B] <~ CLen[C,A] == CLen[C,A] ~> CLen[A,B] => CLen[C,B]
@@ -368,12 +411,15 @@
             function (context, b, a) {
                 return len.set(b, a);
             },
-            // context size is zero
-            0,
             // from any container, the context is a empty list of parameters
             function (a) {
-                return [];
-            }
+                return [
+                    []
+                ];
+            },
+            // context size is zero
+            0,
+            len.specification.valueSize
         );
     };
 
@@ -383,23 +429,48 @@
     //
     // The Option construction is not used, so undefined is assumed to be None.
     //
-    // Only one instance is necessary.
-    var _mapContextLen = _contextLenDef(
-        function (context, a) {
-            return a[context];
-        },
-        function (context, b, a) {
-            a[context] = b;
-            return a;
-        },
-        // One parameter on the context, the key value
-        1,
-        // Each key is a possible context value
-        function (a) {
-            return _.keys(a);
-        }
-    );
+    var _mapContextLenTemplate = function (options) {
+        var fillEmpty = options.fillEmpty || false;
+        return _contextLenDef(
+            function (context, a) {
+                _assert(_.isArray(context), "context for map must be a single value");
+                _assert(context.length === 1, "context for map must be a single value");
+                var key = context[0];
+                var value = a[key];
+                if (fillEmpty && _.isUndefined(value)) {
+                    return {};
+                }
+                return value;
+            },
+            function (context, b, a) {
+                _assert(_.isArray(context), "context for map must be a single value");
+                _assert(context.length === 1, "context for map must be a single value");
+                var key = context[0];
+                a[key] = b;
+                return a;
+            },
+            // Each key is a possible context value
+            function (a) {
+                var keys = _.keys(a);
+                if (keys.length === 0) {
+                    return [];
+                }
+                return _.chain(keys).map(function (key) {
+                    return [key];
+                }).value();
+            },
+            // One parameter on the context, the key value
+            1,
+            1
+        );
+    };
+    var _mapContextLenLeaf = _mapContextLenTemplate({fillEmpty: false});
+    var _mapContextLen = _mapContextLenTemplate({fillEmpty: true});
 
+    var _idCLen = _contextLenFromLen(_idLen);
+    _idCLen.cAndThen = function (cLenBC) {
+        return cLenBC;
+    };
 
     // Build complex context lenses from expressions.
     // ======================================
@@ -416,73 +487,100 @@
     // a.b.{:person}.(name,lastname,age,contacts)
     // TODO add set lens expressions
     // Syntax:
-    //     Expression := ( Part '.' )* TelescopePart?
-    //     Part             := FieldLenPart | MapLenPart
-    //     FieldLenPart     :=  fieldName::String
-    //     MapLenPart       := '{' mapKeyName::String '}'
-    //     TelescopePart    := '('  ( FieldLen ',') * ')'
-    //     FieldLen         :=  (FieldLenPart '.')*
+    // Expression := ( Part '.' )* TelescopePart?
+    // Part             := FieldLenPart | MapLenPart
+    // FieldLenPart     :=  fieldName::String
+    // MapLenPart       := '{' mapKeyName::String '}'
+    // TelescopePart    := '('  ( FieldLen ',') * ')'
+    // FieldLen         :=  (FieldLenPart '.')*
     //
-    var _compileExpression = function (clenExpression) {
+    var _compileExpression = function (cLenExpressionRaw) {
 
-        // Util function, apply composition on andThen.
-        var andThenComposition = function (currContextLen, nextPart) {
+        // clear white spaces
+        var cLenExpression = cLenExpressionRaw.replace(/ /g, '');
+        // Util function, apply composition on cAndThen.
+        var cAndThenComposition = function (currContextLen, nextPart) {
             return currContextLen.cAndThen(nextPart);
+        };
+        // Util function, apply composition on andThen.
+        var andThenComposition = function (currLen, nextPart) {
+            return currLen.andThen(nextPart);
         };
         // FieldLens parts builder
         // --------------------
         // Part is the field name
-        var fieldPartBuilder = function (part) {
-            return _contextLenFromLen(_fieldLenTemplate(part, {fillEmpty: true}));
+        var fieldPartBuilder = function (part, last) {
+            return _contextLenFromLen(_fieldLenTemplate(part, {fillEmpty: !last}));
         };
         // MapLens parts.
         // ------------------------------
-        var partMapLenRegexp = /{(.*)}/gi;
-        var mapPartBuilder = function (part) {
+        var mapPartBuilder = function (part, last) {
             // TODO parameter name is not used, maybe for cross product will be necessary.
-            return _mapContextLen;
+            if (last) {
+                return _mapContextLenLeaf;
+            } else {
+                return _mapContextLen;
+            }
+        };
+        var telescopePartBuilder = function (part, last) {
+            _assert(last === true, " telescope parts must be at the end of the context len extression");
+            // Telescope is a list of nested field lens
+            // Example:
+            // ( internal.att1, internal.att2, other.refValue ).
+            var setParams = (/\((.*)\)/gi).exec(part)[1];
+            var telescopeLensDefinitions = setParams.length == 0 ? [] : setParams.split(",");
+
+            var buildLenFromListOfFields = function (listOfFields) {
+                return _.chain(listOfFields)
+                    .map(function (fieldName, index) {
+                        var isLast = ((listOfFields.length - index - 1) === 0 );
+                        return _fieldLenTemplate(fieldName, {fillEmpty: !isLast})
+                    })
+                    .reduce(andThenComposition, _idLen)
+                    .value();
+            };
+
+            var listOfLens = _.chain(telescopeLensDefinitions)
+                .map(function (lenDefinition) {
+                    return lenDefinition.split(".");
+                })
+                .map(buildLenFromListOfFields)
+                .value();
+            return _contextLenFromLen(_telescope(listOfLens));
         };
 
         // Construction implementation
         // ---------------------------
+
+        // Extract final telescope expression
+        var telescopeSeparator = cLenExpression.indexOf("(");
+        var parts;
+        if (telescopeSeparator == -1) {
+
+            parts = cLenExpression.split(".");
+        } else {
+            // expression is a.b.c.(telescope) -> split to a.b.c (telescope)
+            var contextParts = cLenExpression.substring(0, telescopeSeparator - 1);
+            var telescopePart = cLenExpression.substring(telescopeSeparator);
+            parts = contextParts.split(".");
+            parts.push(telescopePart)
+        }
         // Split len expression in '.' separated parts
-        var parts = lenExpression.split(".");
-        var lenDefinition = _.chain(parts).map(function (part) {
+        var cLenInstance = _.chain(parts).map(function (part, index) {
             var type = part.charAt(0);
+            var isLast = ((parts.length - index - 1) === 0 );
             // Switch to the different part builders.
             switch (type) {
-                case '[':
-                    return setPartBuilder(part);
+                case '(':
+                    return telescopePartBuilder(part, isLast);
                 case '{':
-                    return mapPartBuilder(part);
+                    return mapPartBuilder(part, isLast);
                 default :
-                    return fieldPartBuilder(part);
+                    return fieldPartBuilder(part, isLast);
             }
-        });
-        // Bind function.
-        // Parameter values are passed to the part builders to fix the equivalence classes to use.
-        var _bind = function (params) {
-            var bindedLen = lenDefinition.map(function (partialLen) {
-                // Bind parameters on each part.
-                return partialLen(params);
-            }).reduce(andThenComposition, _idLen).value();
-            // Bind operation is nilpotent. On first bind all parameters must be set.
-            bindedLen.bind = function () {
-                return bindedLen;
-            };
-            return bindedLen;
-        };
-
-        var def = {
-            bind: _bind,
-            bindset: function (objectRef, model) {
-                return _bind(objectRef).set([objectRef], model);
-            },
-            bindunset: function (objectRef, model) {
-                return _bind(objectRef).set([], model);
-            }
-        };
-        return def;
+        }).reduce(cAndThenComposition, _idCLen).value();
+        cLenInstance.signature = cLenExpression;
+        return cLenInstance;
     };
 
 
@@ -492,9 +590,7 @@
         lenNil: _nilLen,
         lenIdentity: _idLen,
         fieldLen: _fieldLenTemplate,
-        mapLen: _mapLen,
-        setLen: _setLen,
-        buildLen: _compileExpression,
+        buildContextLen: _compileExpression,
         telescope: _telescope
     });
 })(this);
