@@ -62,7 +62,7 @@ eelnss may be freely distributed under the MIT license.
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _ = root._ || <span class="hljs-built_in">require</span>(<span class="hljs-string">'underscore'</span>);</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> underscoreRef = root._ || <span class="hljs-built_in">require</span>(<span class="hljs-string">'underscore'</span>);</pre></div></div>
             
         </li>
         
@@ -94,7 +94,9 @@ eelnss may be freely distributed under the MIT license.
         <span class="hljs-keyword">if</span> (!condition) {
             <span class="hljs-keyword">throw</span> message || <span class="hljs-string">"Assertion failed"</span>;
         }
-    }</pre></div></div>
+    }
+
+    <span class="hljs-keyword">var</span> tableIteratorModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_)</span> {</span></pre></div></div>
             
         </li>
         
@@ -105,7 +107,7 @@ eelnss may be freely distributed under the MIT license.
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-6">&#182;</a>
               </div>
-              <h2 id="lenses-definitions">Lenses definitions</h2>
+              <h1 id="table-iterator">Table Iterator</h1>
 
             </div>
             
@@ -118,15 +120,41 @@ eelnss may be freely distributed under the MIT license.
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-7">&#182;</a>
               </div>
-              <p>Main definition function. It take the setter and getter to build a len.
-Types are not respected, but for documentation we assume that len has type Len[A,B]</p>
+              <p>Provide a iteration api for tables with repeated values.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _lenDef = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(get, set, valueSize)</span> {</span>
-        <span class="hljs-keyword">var</span> f = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a, options)</span> {</span>
-            <span class="hljs-keyword">return</span> get(a, options);
-        };</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_tableIterator</span><span class="hljs-params">(pullFunctionBuilder, contextValueSizes)</span> {</span>
+            _assert(_.isFunction(pullFunctionBuilder), <span class="hljs-string">"pullFunctionBuilder is not a function, bad use od table iterator api"</span>);
+            <span class="hljs-keyword">var</span> iteratorFactory = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                <span class="hljs-keyword">var</span> iterator = {};
+                iterator.spec = {
+                    contextSize: contextValueSizes.length,
+                    contextValueSizes: contextValueSizes,
+                    extractionPoints: _findContextValuesExtractionPoints(contextValueSizes)
+                };
+                iterator.nestedNext = pullFunctionBuilder();
+                _assert(_.isFunction(iterator.nestedNext), <span class="hljs-string">"nestedNext is not a function, bad use od table iterator api"</span>);
+                iterator.loopOver = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(iterationHandler)</span> {</span>
+                    <span class="hljs-keyword">var</span> next = iterator.nestedNext();
+                    <span class="hljs-keyword">while</span> (next !== <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>)) {
+                        <span class="hljs-keyword">var</span> changedContextLevel = next[<span class="hljs-number">0</span>];
+                        <span class="hljs-keyword">var</span> contextKeys = next[<span class="hljs-number">1</span>];
+                        <span class="hljs-keyword">var</span> contextValues = next[<span class="hljs-number">2</span>];
+                        iterationHandler(changedContextLevel, contextKeys, contextValues);
+                        next = iterator.nestedNext();
+                    }
+                };
+                <span class="hljs-keyword">return</span> iterator;
+            };
+
+            iteratorFactory.spec = {
+                contextSize: contextValueSizes.length,
+                contextValueSizes: contextValueSizes,
+                extractionPoints: _findContextValuesExtractionPoints(contextValueSizes)
+            };
+            <span class="hljs-keyword">return</span> iteratorFactory;
+        }</pre></div></div>
             
         </li>
         
@@ -137,17 +165,23 @@ Types are not respected, but for documentation we assume that len has type Len[A
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-8">&#182;</a>
               </div>
-              <p>The size of the extracted value:
- 0  - null object always
- 1  - single reference
-n&gt;2 - a list of n values.
-TODO: size for composition of telescopes</p>
+              <p>util function
+show the position on the table where context values start
+For:
+[c1,c2,c3,x1,x2,x3,y1,y2,z1,z2]
+         |        |     |     |
+ result is [3,6,8,10]</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        f.specification = {
-            valueSize: valueSize || <span class="hljs-number">1</span>
-        };</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_findContextValuesExtractionPoints</span><span class="hljs-params">(contextValueSizes)</span> {</span>
+            <span class="hljs-keyword">var</span> contextSize = contextValueSizes.length;
+            <span class="hljs-keyword">return</span> _.reduce(contextValueSizes, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(curr, nextContextValueSize)</span> {</span>
+                <span class="hljs-keyword">var</span> lastMark = _.last(curr);
+                curr.push(lastMark + nextContextValueSize);
+                <span class="hljs-keyword">return</span> curr;
+            }, [contextSize]);
+        }</pre></div></div>
             
         </li>
         
@@ -158,11 +192,72 @@ TODO: size for composition of telescopes</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-9">&#182;</a>
               </div>
-              <p>get: A =&gt; B</p>
+              <p>find where the context key has changed in relation to the previousContextKeys</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        f.get = f;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_findChangeLevel</span><span class="hljs-params">(previousContextKeys, fullContextKeys)</span> {</span>
+            <span class="hljs-keyword">var</span> fullContextKeysLength = fullContextKeys.length;
+            <span class="hljs-keyword">var</span> changeLevel = fullContextKeysLength;
+            <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; fullContextKeysLength; i++) {
+                <span class="hljs-keyword">if</span> (previousContextKeys[i] !== fullContextKeys[i]) {
+                    changeLevel = i;
+                    <span class="hljs-keyword">break</span>;
+                }
+            }
+            <span class="hljs-keyword">return</span> changeLevel;
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_abstractSourceIterator</span><span class="hljs-params">(contextValueSizes, rowExtractorLinearIterator)</span> {</span>
+            <span class="hljs-keyword">var</span> contextSize = contextValueSizes.length;
+            <span class="hljs-keyword">var</span> whereContextLevelValuesStart = _findContextValuesExtractionPoints(contextValueSizes);
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">pullFromSourceBuilder</span><span class="hljs-params">()</span> {</span>
+                <span class="hljs-keyword">var</span> rowExtractor = rowExtractorLinearIterator();
+                <span class="hljs-keyword">var</span> previousContextKeys = <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+                <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                    <span class="hljs-keyword">var</span> row = rowExtractor.next();
+                    <span class="hljs-keyword">if</span> (row === <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>)) {
+                        <span class="hljs-keyword">return</span> <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+                    }
+                    <span class="hljs-keyword">var</span> fullContextKeys = row.slice(<span class="hljs-number">0</span>, contextSize);
+                    <span class="hljs-keyword">var</span> pullResult;
+                    <span class="hljs-keyword">if</span> (previousContextKeys === <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>)) {
+                        <span class="hljs-keyword">var</span> fullValues = row.slice(contextSize);
+                        pullResult = [<span class="hljs-number">0</span>, fullContextKeys, fullValues];
+                    } <span class="hljs-keyword">else</span> {
+                        <span class="hljs-keyword">var</span> changeLevel = _findChangeLevel(previousContextKeys, fullContextKeys);
+                        <span class="hljs-keyword">var</span> changedContextKeys = fullContextKeys.slice(changeLevel);
+                        <span class="hljs-keyword">var</span> changedContextValues = row.slice(whereContextLevelValuesStart[changeLevel]);
+                        pullResult = [changeLevel, changedContextKeys, changedContextValues];
+                    }
+                    previousContextKeys = fullContextKeys;
+                    <span class="hljs-keyword">return</span> pullResult;
+                };
+            }
+            <span class="hljs-keyword">return</span> _tableIterator(pullFromSourceBuilder, contextValueSizes);
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_tableIteratorFromTable</span><span class="hljs-params">(contextValueSizes, table)</span> {</span>
+            <span class="hljs-keyword">var</span> nrOfRows = table.length;
+            <span class="hljs-keyword">var</span> tableRowExtractorBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                <span class="hljs-keyword">var</span> indexCounter = <span class="hljs-number">0</span>;
+                <span class="hljs-keyword">return</span> {
+                    next: <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                        <span class="hljs-keyword">if</span> (nrOfRows === indexCounter) {
+                            <span class="hljs-keyword">return</span> <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+                        }
+                        <span class="hljs-keyword">return</span> table[indexCounter++];
+                    }
+                };
+            };
+            <span class="hljs-keyword">return</span> _abstractSourceIterator(contextValueSizes, tableRowExtractorBuilder);
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_buildTable</span><span class="hljs-params">(iterator)</span> {</span>
+            <span class="hljs-keyword">var</span> table = [];
+            <span class="hljs-keyword">var</span> currentContextKeys;
+            <span class="hljs-keyword">var</span> currentContextValues;</pre></div></div>
             
         </li>
         
@@ -173,11 +268,56 @@ TODO: size for composition of telescopes</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-10">&#182;</a>
               </div>
-              <p>set: (B , A) =&gt; A</p>
+              <p>Parameters are:
+contextLevel: start level where context keys have changed
+contextKeys: new values of context keys [C<em>m, C_m+1,…,C_n], where m = contextLevel
+contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where m = contextLevel</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        f.set = set;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">var</span> valueExtractionPointsWithoutContext = _.map(iterator.spec.extractionPoints, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(point)</span> {</span>
+                <span class="hljs-keyword">return</span> point - iterator.spec.contextSize;
+            });
+            <span class="hljs-keyword">var</span> tableBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(contextLevel, contextKeys, contextValues)</span> {</span>
+                <span class="hljs-keyword">if</span> (contextLevel === <span class="hljs-number">0</span>) {
+                    currentContextKeys = contextKeys;
+                    currentContextValues = contextValues;
+                } <span class="hljs-keyword">else</span> {
+                    <span class="hljs-keyword">var</span> valueExtractionPoint = valueExtractionPointsWithoutContext[contextLevel];
+                    currentContextKeys = _.first(currentContextKeys, contextLevel).concat(contextKeys);
+                    currentContextValues = _.first(currentContextValues, valueExtractionPoint).concat(contextValues);
+                }
+                table.push(currentContextKeys.concat(currentContextValues));
+            };
+            iterator.loopOver(tableBuilder);
+            <span class="hljs-keyword">return</span> table;
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_crossProductTableIterators</span><span class="hljs-params">()</span> {</span>
+            _assert(<span class="hljs-built_in">arguments</span>.length &gt; <span class="hljs-number">1</span>, <span class="hljs-string">"Pass at least 2 table iterators to build a cross product"</span>);
+            <span class="hljs-keyword">var</span> args = <span class="hljs-built_in">Array</span>.prototype.slice.call(<span class="hljs-built_in">arguments</span>);
+            <span class="hljs-keyword">var</span> head = args[<span class="hljs-number">0</span>];
+            <span class="hljs-keyword">var</span> tail = _.tail(args);
+            <span class="hljs-keyword">return</span> _.reduce(tail, crossProductTableIterators, head);
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossProductTableIterators</span><span class="hljs-params">(aIterator, bIterator)</span> {</span>
+                <span class="hljs-keyword">var</span> aContextValuesSizes = aIterator.spec.contextValueSizes;
+                <span class="hljs-keyword">var</span> bContextValuesSizes = bIterator.spec.contextValueSizes;
+                <span class="hljs-keyword">var</span> crossIteratorExtractorBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                    <span class="hljs-keyword">var</span> AIterationInstance = aIterator();
+                    <span class="hljs-keyword">var</span> BIterationInstance = bIterator();
+                    <span class="hljs-keyword">var</span> AcontextValue = <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+                    <span class="hljs-keyword">var</span> BcontextValue = <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+                    <span class="hljs-keyword">var</span> iterationFinished = <span class="hljs-literal">false</span>;
+                    <span class="hljs-keyword">var</span> iterationCurrentStep = startIterations;
+
+                    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">noOpIteration</span><span class="hljs-params">()</span> {</span>
+                    }
+
+                    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">startIterations</span><span class="hljs-params">()</span> {</span>
+                        AcontextValue = AIterationInstance.nestedNext();
+                        BcontextValue = BIterationInstance.nestedNext();
+                        <span class="hljs-keyword">if</span> (AcontextValue === <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>) || BcontextValue === <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>)) {</pre></div></div>
             
         </li>
         
@@ -188,13 +328,20 @@ TODO: size for composition of telescopes</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-11">&#182;</a>
               </div>
-              <p>mod: (B=&gt;B , A) =&gt; A</p>
+              <p>there is a empty iterator in the cross product, so it is empty</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        f.mod = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(f, a)</span> {</span>
-            <span class="hljs-keyword">return</span> set(f(get(a)), a);
-        };</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                            iterationFinished = <span class="hljs-literal">true</span>;
+                            iterationCurrentStep = noOpIteration;
+                            <span class="hljs-keyword">return</span>;
+                        }
+                        iterationCurrentStep = iterateOverB;
+                    }
+
+                    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">iterateOverA</span><span class="hljs-params">()</span> {</span>
+                        AcontextValue = AIterationInstance.nestedNext();
+                        <span class="hljs-keyword">if</span> (AcontextValue === <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>)) {</pre></div></div>
             
         </li>
         
@@ -205,19 +352,21 @@ TODO: size for composition of telescopes</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-12">&#182;</a>
               </div>
-              <p>Lenses left composition
-Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
+              <p>A iterator finished</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        f.andThen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(lenBC)</span> {</span>
-            <span class="hljs-keyword">return</span> _lenDef(
-                _.compose(lenBC, f),
-                <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(c, a)</span> {</span>
-                    <span class="hljs-keyword">return</span> f.mod(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
-                        <span class="hljs-keyword">return</span> lenBC.set(c, b);
-                    }, a);
-                },</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                            iterationFinished = <span class="hljs-literal">true</span>;
+                            iterationCurrentStep = noOpIteration;
+                            <span class="hljs-keyword">return</span>;
+                        }
+                        BIterationInstance = bIterator();
+                        BcontextValue = BIterationInstance.nestedNext();
+                    }
+
+                    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">iterateOverB</span><span class="hljs-params">()</span> {</span>
+                        BcontextValue = BIterationInstance.nestedNext();
+                        <span class="hljs-keyword">if</span> (BcontextValue === <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>)) {</pre></div></div>
             
         </li>
         
@@ -228,13 +377,27 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-13">&#182;</a>
               </div>
-              <p>TODO: size for composition of telescopes is not correct.</p>
+              <p>iteration over B finished, jump to A iteration</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>                f.specification.valueSize * lenBC.specification.valueSize
-            );
-        };</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                            iterateOverA();
+                        }
+                    }
+
+                    <span class="hljs-keyword">return</span> {
+                        next: <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                            iterationCurrentStep();
+                            <span class="hljs-keyword">if</span> (iterationFinished) {
+                                <span class="hljs-keyword">return</span> <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+                            }
+                            <span class="hljs-keyword">return</span> AcontextValue[<span class="hljs-number">1</span>].concat(BcontextValue[<span class="hljs-number">1</span>], AcontextValue[<span class="hljs-number">2</span>], BcontextValue[<span class="hljs-number">2</span>]);
+                        }
+                    };
+                };
+                <span class="hljs-keyword">return</span> _abstractSourceIterator(aContextValuesSizes.concat(bContextValuesSizes), crossIteratorExtractorBuilder);
+            }
+        }</pre></div></div>
             
         </li>
         
@@ -245,14 +408,94 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-14">&#182;</a>
               </div>
-              <p>Right composition.
-Len[A,B] &lt;~ Len[C,A] == Len[C,A] ~&gt; Len[A,B] =&gt; Len[C,B]</p>
+              <p>because context is explicit and ordered, it is necessary to change the order of the columns</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        f.compose = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(LenCA)</span> {</span>
-            <span class="hljs-keyword">return</span> LenCA.andThen(f);
-        };</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_crossProductTables</span><span class="hljs-params">(tables, contextValuesSizes)</span> {</span>
+            _assert(tables.length &gt; <span class="hljs-number">1</span>, <span class="hljs-string">"Pass at least 2 table iterators to build a cross product"</span>);
+            _assert(contextValuesSizes.length === tables.length, <span class="hljs-string">"Provide context sizes for each table"</span>);
+            <span class="hljs-keyword">var</span> tableAndSize = _.zip(tables, contextValuesSizes);
+            <span class="hljs-keyword">var</span> head = tableAndSize[<span class="hljs-number">0</span>];
+            <span class="hljs-keyword">var</span> tail = _.tail(tableAndSize);
+
+            <span class="hljs-keyword">return</span> _.reduce(tail, _crossProductTableIterators, head);
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_crossProductTableIterators</span><span class="hljs-params">(a, b)</span> {</span>
+                <span class="hljs-keyword">var</span> aTable = a[<span class="hljs-number">0</span>];
+                <span class="hljs-keyword">var</span> aContextValueSizes = a[<span class="hljs-number">1</span>];
+                <span class="hljs-keyword">var</span> aContextSize = aContextValueSizes.length;
+                <span class="hljs-keyword">var</span> bTable = b[<span class="hljs-number">0</span>];
+                <span class="hljs-keyword">var</span> bContextValueSizes = b[<span class="hljs-number">1</span>];
+                <span class="hljs-keyword">var</span> bContextSize = bContextValueSizes.length;
+                <span class="hljs-keyword">return</span> _.chain(aTable).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(aRow)</span> {</span>
+                    <span class="hljs-keyword">return</span> _.chain(bTable).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(bRow)</span> {</span>
+                        <span class="hljs-keyword">var</span> contextKeys = _.first(aRow, aContextSize).concat(_.first(bRow, bContextSize));
+                        <span class="hljs-keyword">var</span> values = aRow.slice(aContextSize).concat(bRow.slice(bContextSize));
+                        <span class="hljs-keyword">return</span> contextKeys.concat(values);
+                    }).value();
+                }).flatten(<span class="hljs-literal">true</span>).value();
+            }
+        }
+        <span class="hljs-keyword">return</span> {
+            tableIterator: _tableIterator,
+            tableIteratorFromTable: _tableIteratorFromTable,
+            tableIteratorBuilder: _abstractSourceIterator,
+            buildTableFromIterator: _buildTable,
+            crossProductTableIterators: _crossProductTableIterators,
+            crossProductTables: _crossProductTables
+        };
+    })(underscoreRef);
+
+    <span class="hljs-keyword">var</span> lensesModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_)</span> {</span>
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_defineLen</span><span class="hljs-params">(getter, setter, options)</span> {</span>
+            <span class="hljs-keyword">var</span> opt = options || {};
+            <span class="hljs-keyword">var</span> len = {};
+            len.spec = {
+                signature: opt.signature || <span class="hljs-string">"not provided"</span>,
+                valueSize: opt.valueSize || <span class="hljs-number">1</span>
+            };
+            len.get = getter;
+            len.set = setter;
+            len.mod = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(f, a)</span> {</span>
+                <span class="hljs-keyword">return</span> len.set(f(len.get(a)), a);
+            };
+            len.andThen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(lenBC)</span> {</span>
+                <span class="hljs-keyword">return</span> _andThenCompose(len, lenBC);
+            };
+            <span class="hljs-keyword">return</span> len;
+        }
+
+
+        <span class="hljs-keyword">var</span> _nilLen = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">nilGetter</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">nilSetter</span><span class="hljs-params">(b, a)</span> {</span>
+                <span class="hljs-keyword">return</span> a;
+            }
+
+            <span class="hljs-keyword">return</span> _defineLen(nilGetter, nilSetter, {
+                signature: <span class="hljs-string">"nil"</span>,
+                valueSize: <span class="hljs-number">0</span>
+            });
+        })();
+
+        <span class="hljs-keyword">var</span> _idLen = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">idGetter</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">return</span> a;
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">idSetter</span><span class="hljs-params">(newa, a)</span> {</span>
+                <span class="hljs-keyword">return</span> newa;
+            }
+
+            <span class="hljs-keyword">return</span> _defineLen(idGetter, idSetter, {
+                signature: <span class="hljs-string">"ID"</span>,
+                valueSize: <span class="hljs-number">1</span>
+            });
+        })();</pre></div></div>
             
         </li>
         
@@ -263,17 +506,38 @@ Len[A,B] &lt;~ Len[C,A] == Len[C,A] ~&gt; Len[A,B] =&gt; Len[C,B]</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
-              <p>For Len[A,B] define a equivalence class on A based on equivalence on B.</p>
-<p>It is: a1 == a2 &lt;=&gt; len.get(a1) == len.get(a2)</p>
-<p>Then for a given value of B, the condition is:
-a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
-<p>If value == undefined, then the equivalence class is the whole set.</p>
-<p>Equivalence class is represented as utilities class:</p>
+              <p>Lenses left composition
+Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        f.eqClass = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(valueToMatch)</span> {</span>
-            <span class="hljs-keyword">return</span> {</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_andThenCompose</span><span class="hljs-params">(lenAB, lenBC)</span> {</span>
+            <span class="hljs-keyword">if</span> (lenAB === _idLen) {
+                <span class="hljs-keyword">return</span> lenBC;
+            }
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">andThenGetter</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">return</span> lenBC.get(lenAB.get(a));
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">andThenSetter</span><span class="hljs-params">(c, a)</span> {</span>
+                <span class="hljs-keyword">return</span> lenAB.mod(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
+                    <span class="hljs-keyword">return</span> lenBC.set(c, b);
+                }, a);
+            }
+
+            <span class="hljs-keyword">var</span> signature = lenAB.spec.signature + <span class="hljs-string">"."</span> + lenBC.spec.signature;
+            <span class="hljs-keyword">var</span> valueSize = lenAB.spec.valueSize * lenBC.spec.valueSize;
+            <span class="hljs-keyword">return</span> _defineLen(andThenGetter, andThenSetter, {
+                signature: signature,
+                valueSize: valueSize
+            });
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_fieldLenTemplate</span><span class="hljs-params">(fieldName, fillEmpty)</span> {</span>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fieldGetter</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">if</span> (_.isUndefined(a)) {
+                    <span class="hljs-keyword">return</span> <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+                }</pre></div></div>
             
         </li>
         
@@ -284,16 +548,12 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
-              <p>check if A belongs to the equivalence class</p>
+              <p>Arrays are not valid fieldLen containers.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>                check: <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                    <span class="hljs-keyword">if</span> (valueToMatch === <span class="hljs-literal">undefined</span>) {
-                        <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>;
-                    }
-                    <span class="hljs-keyword">return</span> f.get(a) === valueToMatch;
-                },</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                _assert(!_.isArray(a), <span class="hljs-string">"Arrays are not valid fieldLen containers. Field name:"</span> + fieldName + <span class="hljs-string">". Argument:"</span> + a);
+                <span class="hljs-keyword">var</span> value = a[fieldName];</pre></div></div>
             
         </li>
         
@@ -304,18 +564,17 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-17">&#182;</a>
               </div>
-              <p>select all values that belong to the equivalence class</p>
+              <p>If options.fillEmpty===true, then a empty value is filled with a {} object. This is used for nested lens zeros.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>                select: <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listOfA)</span> {</span>
-                    <span class="hljs-keyword">if</span> (valueToMatch === <span class="hljs-literal">undefined</span>) {
-                        <span class="hljs-keyword">return</span> listOfA;
-                    }
-                    <span class="hljs-keyword">return</span> _.chain(listOfA).filter(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                        <span class="hljs-keyword">return</span> f.get(a) === valueToMatch;
-                    }).value();
-                },</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">if</span> (fillEmpty === <span class="hljs-literal">true</span> &amp;&amp; _.isUndefined(value)) {
+                    <span class="hljs-keyword">return</span> {};
+                }
+                <span class="hljs-keyword">return</span> value;
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fieldSetter</span><span class="hljs-params">(b, a)</span> {</span></pre></div></div>
             
         </li>
         
@@ -326,23 +585,93 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-18">&#182;</a>
               </div>
-              <p>remove all values that belong to the equivalence class</p>
+              <p>Arrays are not valid fieldLen containers.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>                filter: <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listOfA)</span> {</span>
-                    <span class="hljs-keyword">if</span> (valueToMatch === <span class="hljs-literal">undefined</span>) {
-                        <span class="hljs-keyword">return</span> [];
-                    }
-                    <span class="hljs-keyword">return</span> _.chain(listOfA).filter(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                        <span class="hljs-keyword">return</span> f.get(a) !== valueToMatch;
-                    }).value();
+            <div class="content"><div class='highlight'><pre>                _assert(!_.isArray(a), <span class="hljs-string">"Arrays are not valid fieldLen containers. Field name:"</span> + fieldName + <span class="hljs-string">". Argument:"</span> + a);
+                <span class="hljs-keyword">if</span> (_.isUndefined(b)) {
+                    <span class="hljs-keyword">return</span> _.omit(a, fieldName);
                 }
-            };
-        };
+                <span class="hljs-keyword">var</span> extendO = {};
+                extendO[fieldName] = b;
+                <span class="hljs-keyword">return</span> _.chain(a).clone().extend(extendO).value();
+            }
 
-        <span class="hljs-keyword">return</span> f;
-    };</pre></div></div>
+            <span class="hljs-keyword">return</span> _defineLen(fieldGetter, fieldSetter, fieldName);
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_fieldLenLeaf</span><span class="hljs-params">(fieldName)</span> {</span>
+            <span class="hljs-keyword">return</span> _fieldLenTemplate(fieldName, <span class="hljs-literal">false</span>);
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_fieldLen</span><span class="hljs-params">(fieldName)</span> {</span>
+            <span class="hljs-keyword">return</span> _fieldLenTemplate(fieldName, <span class="hljs-literal">true</span>);
+        }
+
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_telescopeCompose</span><span class="hljs-params">()</span> {</span>
+            _assert(<span class="hljs-built_in">arguments</span>.length &gt; <span class="hljs-number">1</span>, <span class="hljs-string">"Pass at least 2 lenses a telescope composition"</span>);
+            <span class="hljs-keyword">var</span> listOfLens = <span class="hljs-built_in">Array</span>.prototype.slice.call(<span class="hljs-built_in">arguments</span>);
+            <span class="hljs-keyword">var</span> emptyValues = _.range(listOfLens.length).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                <span class="hljs-keyword">return</span> <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
+            });
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">telescopeGetter</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">return</span> _.map(listOfLens, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(singleCLen)</span> {</span>
+                    <span class="hljs-keyword">return</span> singleCLen.get(a);
+                });
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">telescopeSetter</span><span class="hljs-params">(b, a)</span> {</span>
+                <span class="hljs-keyword">var</span> values = b;
+                <span class="hljs-keyword">if</span> (_.isUndefined(values)) {
+                    values = emptyValues;
+                }
+                <span class="hljs-keyword">return</span> _.reduce(_.zip(listOfLens, values), <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(finalA, len_value)</span> {</span>
+                    <span class="hljs-keyword">var</span> len = len_value[<span class="hljs-number">0</span>];
+                    <span class="hljs-keyword">var</span> value = len_value[<span class="hljs-number">1</span>];
+                    <span class="hljs-keyword">return</span> len.set(value, finalA);
+                }, a);
+            }
+
+            <span class="hljs-keyword">var</span> telescopeSignature = _.reduce(listOfLens, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(accum, len)</span> {</span>
+                <span class="hljs-keyword">return</span> accum + len.spec.signature + <span class="hljs-string">","</span>;
+            }, <span class="hljs-string">"("</span>) + <span class="hljs-string">")"</span>;
+
+            <span class="hljs-keyword">return</span> _defineLen(telescopeGetter, telescopeSetter, {
+                signature: telescopeSignature,
+                valueSize: listOfLens.length
+            });
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_buildLenFromNestedFieldsExpression</span><span class="hljs-params">(nestedFieldsExpression)</span> {</span>
+            <span class="hljs-keyword">var</span> listOfFields = nestedFieldsExpression.split(<span class="hljs-string">"."</span>);
+            <span class="hljs-keyword">return</span> _.chain(listOfFields)
+                .map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(fieldName, index)</span> {</span>
+                    <span class="hljs-keyword">var</span> isLast = ((listOfFields.length - index - <span class="hljs-number">1</span>) === <span class="hljs-number">0</span> );
+                    <span class="hljs-keyword">if</span> (isLast) {
+                        <span class="hljs-keyword">return</span> _fieldLenLeaf(fieldName);
+                    } <span class="hljs-keyword">else</span> {
+                        <span class="hljs-keyword">return</span> _fieldLen(fieldName);
+                    }
+                })
+                .reduce(_andThenCompose, _idLen)
+                .value();
+        }
+
+
+        <span class="hljs-keyword">return</span> {
+            defineLen: _defineLen,
+            nilLen: _nilLen,
+            idLen: _idLen,
+            fieldLenLeaf: _fieldLenLeaf,
+            fieldLen: _fieldLen,
+            telescopeCompose: _telescopeCompose,
+            andThenCompose: _andThenCompose,
+            nestedFieldBuilder: _buildLenFromNestedFieldsExpression
+        };
+    })(underscoreRef);</pre></div></div>
             
         </li>
         
@@ -353,9 +682,38 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
-              <h2 id="nil-len">Nil Len</h2>
+              <p>Context is a single value</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> contextLensesModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_, lenses)</span> {</span>
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_defineContextLen</span><span class="hljs-params">(contextGetter, contextSetter, contextExtractor, options)</span> {</span>
+            <span class="hljs-keyword">var</span> opt = options || {};
+            <span class="hljs-keyword">var</span> clen = {};
+            clen.spec = {
+                contextSize: opt.contextSize || <span class="hljs-number">0</span>,
+                valueSize: opt.valueSize || <span class="hljs-number">1</span>,
+                signature: opt.signature || <span class="hljs-string">"not provider"</span>
+            };
+            clen.spec.size = clen.spec.contextSize + clen.spec.valueSize;
+            clen.cget = contextGetter;
+            clen.cset = contextSetter;
+            clen.extract = contextExtractor;
+            clen.cmod = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, f, a)</span> {</span>
+                <span class="hljs-keyword">return</span> clen.cset(context, f(clen.cget(context, a)), a);
+            };
+            <span class="hljs-keyword">if</span> (clen.spec.contextSize == <span class="hljs-number">0</span>) {
+                clen.lget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(container)</span> {</span>
+                    <span class="hljs-keyword">var</span> contextWithValue;
+                    <span class="hljs-keyword">if</span> (clen.spec.valueSize === <span class="hljs-number">1</span>) {
+                        contextWithValue = [clen.cget([], container)];
+                    } <span class="hljs-keyword">else</span> {
+                        contextWithValue = clen.cget([], container);
+                    }
+                    <span class="hljs-keyword">return</span> [contextWithValue];
+                };
+                clen.lset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listContextValue, container)</span> {</span>
+                    <span class="hljs-keyword">if</span> (listContextValue.length === <span class="hljs-number">0</span>) {</pre></div></div>
             
         </li>
         
@@ -366,19 +724,22 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-20">&#182;</a>
               </div>
-              <p>Nil Len Len[undefined,A], always return undefined, and don’t change the container object A.</p>
+              <p>single len, set of [] must be mapped to set of [[undefined]]</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _nilLen = _lenDef(
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-            <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
-        },
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b, a)</span> {</span>
-            <span class="hljs-keyword">return</span> a;
-        },
-        <span class="hljs-number">0</span>
-    );</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                        <span class="hljs-keyword">return</span> clen.cset([], <span class="hljs-literal">undefined</span>, container);
+                    }
+                    <span class="hljs-keyword">return</span> _listContextSetter(clen, listContextValue, container);
+                };
+            } <span class="hljs-keyword">else</span> {
+                clen.lget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(container)</span> {</span>
+                    <span class="hljs-keyword">return</span> _listContextGetter(clen, container);
+                };
+                clen.lset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listContextValue, container)</span> {</span>
+                    <span class="hljs-keyword">return</span> _listContextSetter(clen, listContextValue, container);
+                };
+            }</pre></div></div>
             
         </li>
         
@@ -389,9 +750,221 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-21">&#182;</a>
               </div>
-              <h2 id="identity-len">Identity len</h2>
+              <p>The bind operation just fix the context parameter and return a len.</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>            clen.bindContext = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context)</span> {</span>
+                _assert(context.length === clen.spec.contextSize, <span class="hljs-string">"context size error"</span>);
+                <span class="hljs-keyword">var</span> bindedGet = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
+                    <span class="hljs-keyword">return</span> clen.cget(context, a);
+                };
+                <span class="hljs-keyword">var</span> bindedSet = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b, a)</span> {</span>
+                    <span class="hljs-keyword">return</span> clen.cset(context, b, a);
+                };
+                <span class="hljs-keyword">return</span> lenses.defineLen(bindedGet, bindedSet, {
+                    signature: clen.spec.signature,
+                    valueSize: clen.spec.valueSize
+                });
+            };
+            clen.bindContextValue = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(contextAndValue)</span> {</span>
+                _assert(contextAndValue.length === clen.spec.size, <span class="hljs-string">"context size error"</span>);
+                <span class="hljs-keyword">var</span> _context = contextAndValue.slice(<span class="hljs-number">0</span>, clen.spec.contextSize);
+                <span class="hljs-keyword">var</span> _value = contextAndValue.slice(clen.spec.contextSize);
+                <span class="hljs-keyword">var</span> _len = clen.bindContext(_context);
+                <span class="hljs-keyword">return</span> {
+                    len: _len,
+                    value: _value,
+                    context: _context
+                };
+            };
+            <span class="hljs-keyword">return</span> clen;
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_listContextGetter</span><span class="hljs-params">(cLen, container)</span> {</span>
+            <span class="hljs-keyword">return</span> _.chain(cLen.extract(container)).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context)</span> {</span>
+                <span class="hljs-keyword">return</span> context.concat(cLen.cget(context, container));
+            }).value();
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_listContextSetter</span><span class="hljs-params">(cLen, listContextValue, container)</span> {</span>
+            <span class="hljs-keyword">return</span> _.chain(listContextValue)
+                .reduce(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(currContainer, contextAndValue)</span> {</span>
+                    <span class="hljs-keyword">var</span> context = contextAndValue.slice(<span class="hljs-number">0</span>, cLen.spec.contextSize);
+                    <span class="hljs-keyword">var</span> value = contextAndValue.slice(cLen.spec.contextSize);
+                    <span class="hljs-keyword">if</span> (cLen.spec.valueSize === <span class="hljs-number">1</span>) {
+                        <span class="hljs-keyword">return</span> cLen.cset(context, value[<span class="hljs-number">0</span>], currContainer);
+                    }
+                    <span class="hljs-keyword">return</span> cLen.cset(context, value, currContainer);
+                }, container).value();
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_emptyExtractor</span><span class="hljs-params">(a)</span> {</span>
+            <span class="hljs-keyword">return</span> [
+                []
+            ];
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_contextLenFromLen</span><span class="hljs-params">(len)</span> {</span>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cgetFromLen</span><span class="hljs-params">(context, a)</span> {</span>
+                <span class="hljs-keyword">return</span> len.get(a);
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">csetFromLen</span><span class="hljs-params">(context, b, a)</span> {</span>
+                <span class="hljs-keyword">return</span> len.set(b, a);
+            }
+
+            <span class="hljs-keyword">return</span> _defineContextLen(cgetFromLen, csetFromLen, _emptyExtractor, {
+                    contextSize: <span class="hljs-number">0</span>,
+                    valueSize: len.spec.valueSize,
+                    signature: len.spec.signature
+                }
+            );
+        }
+
+        <span class="hljs-keyword">var</span> _idContextLen = _contextLenFromLen(lenses.idLen);
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_mapContextLenTemplate</span><span class="hljs-params">(fillEmpty)</span> {</span>
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cgetMap</span><span class="hljs-params">(context, a)</span> {</span>
+                _assert(_.isArray(context), <span class="hljs-string">"context for map must be a single value"</span>);
+                _assert(context.length === <span class="hljs-number">1</span>, <span class="hljs-string">"context for map must be a single value"</span>);
+                <span class="hljs-keyword">var</span> key = context[<span class="hljs-number">0</span>];
+                <span class="hljs-keyword">var</span> value = a[key];
+                <span class="hljs-keyword">if</span> (fillEmpty &amp;&amp; _.isUndefined(value)) {
+                    <span class="hljs-keyword">return</span> {};
+                }
+                <span class="hljs-keyword">return</span> value;
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">csetMap</span><span class="hljs-params">(context, b, a)</span> {</span>
+                _assert(_.isArray(context), <span class="hljs-string">"context for map must be a single value"</span>);
+                _assert(context.length === <span class="hljs-number">1</span>, <span class="hljs-string">"context for map must be a single value"</span>);
+                <span class="hljs-keyword">var</span> key = context[<span class="hljs-number">0</span>];
+                a[key] = b;
+                <span class="hljs-keyword">return</span> a;
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">contextExtractorMap</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">var</span> keys = _.keys(a);
+                <span class="hljs-keyword">if</span> (keys.length === <span class="hljs-number">0</span>) {
+                    <span class="hljs-keyword">return</span> [];
+                }
+                <span class="hljs-keyword">return</span> _.chain(keys).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(key)</span> {</span>
+                    <span class="hljs-keyword">return</span> [key];
+                }).value();
+            }
+
+            <span class="hljs-keyword">return</span> _defineContextLen(cgetMap, csetMap, contextExtractorMap, {
+                    contextSize: <span class="hljs-number">1</span>,
+                    valueSize: <span class="hljs-number">1</span>,
+                    signature: <span class="hljs-string">"{:map}"</span>
+                }
+            );
+        }
+
+        <span class="hljs-keyword">var</span> _mapContextLenLeaf = _mapContextLenTemplate(<span class="hljs-literal">false</span>);
+        <span class="hljs-keyword">var</span> _mapContextLen = _mapContextLenTemplate(<span class="hljs-literal">true</span>);
+
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_contextAndThenComposition</span><span class="hljs-params">(cLenAB, cLenBC)</span> {</span>
+            <span class="hljs-keyword">if</span> (cLenAB === _idContextLen) {
+                <span class="hljs-keyword">return</span> cLenBC;
+            }
+            <span class="hljs-keyword">var</span> cAndThenSignature = cLenAB.spec.signature + <span class="hljs-string">" cAndThen "</span> + cLenBC.spec.signature;
+            <span class="hljs-keyword">var</span> cAndThenContextSize = cLenAB.spec.contextSize + cLenBC.spec.contextSize;
+            <span class="hljs-keyword">var</span> cAndThenValueSize = cLenAB.spec.valueSize * cLenBC.spec.valueSize;
+            <span class="hljs-keyword">var</span> cAndThenOptions = {
+                contextSize: cAndThenContextSize,
+                valueSize: cAndThenValueSize,
+                signature: cAndThenSignature
+            };
+
+            <span class="hljs-keyword">if</span> (cLenAB.spec.contextSize === <span class="hljs-number">0</span>) {
+                <span class="hljs-keyword">return</span> simpleAndThen();
+            }
+            <span class="hljs-keyword">if</span> (cLenBC.spec.contextSize === <span class="hljs-number">0</span>) {
+                <span class="hljs-keyword">return</span> simpleInverseAndThen();
+            }
+            <span class="hljs-keyword">return</span> realCAndThen();
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">simpleAndThen</span><span class="hljs-params">()</span> {</span>
+                <span class="hljs-keyword">var</span> simpleCget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
+                    <span class="hljs-keyword">return</span> cLenBC.cget(context, cLenAB.cget([], a));
+                };
+                <span class="hljs-keyword">var</span> simpleCset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, c, a)</span> {</span>
+                    <span class="hljs-keyword">return</span> cLenAB.cmod([], <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
+                        <span class="hljs-keyword">return</span> cLenBC.cset(context, c, b);
+                    }, a);
+                };
+                <span class="hljs-keyword">var</span> simpleExtract = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
+                    <span class="hljs-keyword">return</span> cLenBC.extract(cLenAB.cget([], a));
+                };
+                <span class="hljs-keyword">return</span> _defineContextLen(simpleCget, simpleCset, simpleExtract, cAndThenOptions);
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">simpleInverseAndThen</span><span class="hljs-params">()</span> {</span>
+                <span class="hljs-keyword">var</span> simpleCget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
+                    <span class="hljs-keyword">return</span> cLenBC.cget([], cLenAB.cget(context, a));
+                };
+                <span class="hljs-keyword">var</span> simpleCset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, c, a)</span> {</span>
+                    <span class="hljs-keyword">return</span> cLenAB.cmod(context, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
+                        <span class="hljs-keyword">return</span> cLenBC.cset([], c, b);
+                    }, a);
+                };
+                <span class="hljs-keyword">return</span> _defineContextLen(simpleCget, simpleCset, cLenAB.extract, cAndThenOptions);
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">realCAndThen</span><span class="hljs-params">()</span> {</span>
+                <span class="hljs-keyword">var</span> composedCget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
+                    <span class="hljs-keyword">var</span> ABcontext = context.slice(<span class="hljs-number">0</span>, cLenAB.spec.contextSize);
+                    <span class="hljs-keyword">var</span> BCcontext = context.slice(cLenAB.spec.contextSize);
+                    <span class="hljs-keyword">return</span> cLenBC.cget(BCcontext, cLenAB.cget(ABcontext, a));
+                };
+                <span class="hljs-keyword">var</span> composedCset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, c, a)</span> {</span>
+                    <span class="hljs-keyword">var</span> ABcontext = context.slice(<span class="hljs-number">0</span>, cLenAB.spec.contextSize);
+                    <span class="hljs-keyword">var</span> BCcontext = context.slice(cLenAB.spec.contextSize);
+                    <span class="hljs-keyword">return</span> cLenAB.cmod(ABcontext, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
+                        <span class="hljs-keyword">return</span> cLenBC.cset(BCcontext, c, b);
+                    }, a);
+                };
+                <span class="hljs-keyword">var</span> composedExtactor = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
+                    <span class="hljs-keyword">return</span> _.chain(cLenAB.extract(a)).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(single_b_context)</span> {</span>
+                        <span class="hljs-keyword">var</span> b = cLenAB.cget(single_b_context, a);
+                        <span class="hljs-keyword">return</span> _.map(cLenBC.extract(b), <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(single_c_context)</span> {</span>
+                            <span class="hljs-keyword">return</span>  single_b_context.concat(single_c_context);
+                        });
+                    }).flatten(<span class="hljs-literal">true</span>).value();
+                };
+                <span class="hljs-keyword">return</span> _defineContextLen(composedCget, composedCset, composedExtactor, cAndThenOptions);
+            }
+        }
+
+
+        <span class="hljs-keyword">return</span> {
+            defineContextLen: _defineContextLen,
+            idContextLen: _idContextLen,
+            mapContextLenLeaf: _mapContextLenLeaf,
+            mapContextLen: _mapContextLen,
+            contextLenFromLen: _contextLenFromLen,
+            contextLenComposition: _contextAndThenComposition
+        };
+    })(underscoreRef, lensesModule);
+
+    <span class="hljs-keyword">var</span> publicApiModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_, lenses, contextLenses)</span> {</span>
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_buildNestedContextLen</span><span class="hljs-params">(contextLenExpressionRaw)</span> {</span>
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">telescopePartBuilder</span><span class="hljs-params">(part, last)</span> {</span>
+                _assert(last === <span class="hljs-literal">true</span>, <span class="hljs-string">" telescope parts must be at the end of the context len expression"</span>);
+                <span class="hljs-keyword">var</span> setParams = (<span class="hljs-regexp">/\((.*)\)/gi</span>).exec(part)[<span class="hljs-number">1</span>];
+                <span class="hljs-keyword">var</span> telescopeLensDefinitions = setParams.length === <span class="hljs-number">0</span> ? [] : setParams.split(<span class="hljs-string">","</span>);
+
+                <span class="hljs-keyword">var</span> listOfLens = _.map(telescopeLensDefinitions, lenses.nestedFieldBuilder);
+                <span class="hljs-keyword">return</span> contextLenses.contextLenFromLen(lenses.telescopeCompose.apply({}, listOfLens));
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fieldPartBuilder</span><span class="hljs-params">(part, last)</span> {</span></pre></div></div>
             
         </li>
         
@@ -402,19 +975,18 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
-              <p>The identity len Len[A,A].</p>
+              <p>TODO parameter name is not used, maybe for cross product will be necessary.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _idLen = _lenDef(
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-            <span class="hljs-keyword">return</span> a;
-        },
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(newa, a)</span> {</span>
-            <span class="hljs-keyword">return</span> newa;
-        },
-        <span class="hljs-number">1</span>
-    );</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">if</span> (last) {
+                    <span class="hljs-keyword">return</span> contextLenses.contextLenFromLen(lenses.fieldLenLeaf(part));
+                } <span class="hljs-keyword">else</span> {
+                    <span class="hljs-keyword">return</span> contextLenses.contextLenFromLen(lenses.fieldLen(part));
+                }
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">mapPartBuilder</span><span class="hljs-params">(part, last)</span> {</span></pre></div></div>
             
         </li>
         
@@ -425,13 +997,16 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
-              <p>Optimization for id len</p>
+              <p>TODO parameter name is not used, maybe for cross product will be necessary.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    _idLen.andThen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(lenBC)</span> {</span>
-        <span class="hljs-keyword">return</span> lenBC;
-    };</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">if</span> (last) {
+                    <span class="hljs-keyword">return</span> contextLenses.mapContextLenLeaf;
+                } <span class="hljs-keyword">else</span> {
+                    <span class="hljs-keyword">return</span> contextLenses.mapContextLen;
+                }
+            }</pre></div></div>
             
         </li>
         
@@ -442,9 +1017,11 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
-              <h2 id="field-len-template-">Field Len template:</h2>
+              <p>clear white spaces</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">var</span> contextLenExpression = contextLenExpressionRaw.replace(<span class="hljs-regexp">/ /g</span>, <span class="hljs-string">''</span>);</pre></div></div>
             
         </li>
         
@@ -455,14 +1032,20 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-25">&#182;</a>
               </div>
-              <p>Extract from a object the value over key ‘fieldName’.</p>
+              <p>Extract final telescope expression</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _fieldLenTemplate = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(fieldName, options)</span> {</span>
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fGet</span><span class="hljs-params">(a)</span> {</span>
-            <span class="hljs-keyword">var</span> opt = options || {};
-            <span class="hljs-keyword">var</span> fillEmpty = opt.fillEmpty || <span class="hljs-literal">false</span>;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">var</span> telescopeSeparator = contextLenExpression.indexOf(<span class="hljs-string">"("</span>);
+            <span class="hljs-keyword">var</span> parts;
+            <span class="hljs-keyword">switch</span> (telescopeSeparator) {
+                <span class="hljs-keyword">case</span> -<span class="hljs-number">1</span>:
+                    parts = contextLenExpression.split(<span class="hljs-string">"."</span>);
+                    <span class="hljs-keyword">break</span>;
+                <span class="hljs-keyword">case</span> <span class="hljs-number">0</span>:
+                    parts = [contextLenExpression];
+                    <span class="hljs-keyword">break</span>;
+                <span class="hljs-keyword">default</span>:</pre></div></div>
             
         </li>
         
@@ -473,13 +1056,18 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
-              <p>Map undefined containers to undefined values</p>
+              <p>expression is a.b.c.(telescope) -&gt; split to a.b.c (telescope)</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">if</span> (_.isUndefined(a)) {
-                <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
-            }</pre></div></div>
+            <div class="content"><div class='highlight'><pre>                    <span class="hljs-keyword">var</span> contextParts = contextLenExpression.substring(<span class="hljs-number">0</span>, telescopeSeparator - <span class="hljs-number">1</span>);
+                    <span class="hljs-keyword">var</span> telescopePart = contextLenExpression.substring(telescopeSeparator);
+                    parts = contextParts.split(<span class="hljs-string">"."</span>);
+                    parts.push(telescopePart);
+            }
+            <span class="hljs-keyword">var</span> cLenInstance = _.chain(parts).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(part, index)</span> {</span>
+                <span class="hljs-keyword">var</span> type = part.charAt(<span class="hljs-number">0</span>);
+                <span class="hljs-keyword">var</span> isLast = ((parts.length - index - <span class="hljs-number">1</span>) === <span class="hljs-number">0</span> );</pre></div></div>
             
         </li>
         
@@ -490,1035 +1078,107 @@ a in eqClass(value) &lt;=&gt; let.get(a) == value</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-27">&#182;</a>
               </div>
-              <p>Arrays are not valid fieldLen containers.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            _assert(!_.isArray(a), <span class="hljs-string">"Arrays are not valid fieldLen containers. Field name:"</span> + fieldName + <span class="hljs-string">". Argument:"</span> + a);
-            <span class="hljs-keyword">var</span> value = a[fieldName];</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-28">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-28">&#182;</a>
-              </div>
-              <p>If options.fillEmpty===true, then a empty value is filled with a {} object. This is used for nested lens zeros.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">if</span> (fillEmpty === <span class="hljs-literal">true</span> &amp;&amp; _.isUndefined(value)) {
-                <span class="hljs-keyword">return</span> {};
-            }
-            <span class="hljs-keyword">return</span> value;
-        };
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fSet</span><span class="hljs-params">(b, a)</span> {</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-29">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-29">&#182;</a>
-              </div>
-              <p>Arrays are not valid fieldLen containers.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            _assert(!_.isArray(a), <span class="hljs-string">"Arrays are not valid fieldLen containers. Field name:"</span> + fieldName + <span class="hljs-string">". Argument:"</span> + a);
-            <span class="hljs-keyword">if</span> (_.isUndefined(b)) {
-                <span class="hljs-keyword">return</span> _.omit(a, fieldName);
-            }
-            <span class="hljs-keyword">var</span> extendO = {};
-            extendO[fieldName] = b;
-            <span class="hljs-keyword">return</span> _.chain(a).clone().extend(extendO).value();
-        };
-        <span class="hljs-keyword">return</span> _lenDef(fGet, fSet, <span class="hljs-number">1</span>);
-    };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-30">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-30">&#182;</a>
-              </div>
-              <h2 id="telescope-list-of-lens">Telescope: List of lens</h2>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-31">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-31">&#182;</a>
-              </div>
-              <p>Accept a list of lens, and execute folded getters and setters to/from lists of value</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _telescope = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listOfLens)</span> {</span>
-        _assert(_.isArray(listOfLens), <span class="hljs-string">"A list of lens is expected"</span>);</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-32">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-32">&#182;</a>
-              </div>
-              <p>For each len, extract the value form the container.
-The result is a list of extracted values.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> getTelescope = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-            <span class="hljs-keyword">return</span> _.map(listOfLens, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(singleCLen)</span> {</span>
-                <span class="hljs-keyword">return</span> singleCLen.get(a);
-            });
-        };
-        <span class="hljs-keyword">var</span> setTelescope = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b, a)</span> {</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-33">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-33">&#182;</a>
-              </div>
-              <p>setting undefined will empty values for the nested lenses.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">var</span> values = b || _.range(listOfLens.length).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
-                <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
-            });
-            <span class="hljs-keyword">return</span> _.reduce(_.zip(listOfLens, values), <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(res, len_value)</span> {</span>
-                <span class="hljs-keyword">var</span> len = len_value[<span class="hljs-number">0</span>];
-                <span class="hljs-keyword">var</span> value = len_value[<span class="hljs-number">1</span>];
-                <span class="hljs-keyword">return</span> len.set(value, res);
-            }, a);
-        };
-        <span class="hljs-keyword">return</span> _lenDef(getTelescope, setTelescope, listOfLens.length);
-    };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-34">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-34">&#182;</a>
-              </div>
-              <h1 id="context-lenses-definitions">Context lenses definitions</h1>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-35">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-35">&#182;</a>
-              </div>
-              <p>Context Lenses accept not only a value to set/get, but also a context that parametrizes the final len to use.</p>
-<p>The simplest not trivial example is a map len with key as parameter:
-    mapLen(key).get( Map )
-    mapLen(key).set( Value, Map )
-Context can be binded to get a standard len:
-    contextMapLen.bind(key).get(Map)
-    contextMapLen.bind(key).set( Value, Map)</p>
-<p>The cget/cset functions receive a extra context parameter.</p>
-<p>Then, for the mapLen example the results are:
-    contextMapLen.cget(key,Map) =&gt; value
-where Map(key) = value</p>
-<p>The Operation:
-    contextMapLen.cset(key,value, Map)
-updates the map.</p>
-<p>A context len knows how to extract all possible contexts values from a container. It must be provided during clen definition in contextExtractor.
-contextExtractor provide a list of all possible context values: [[c1,c2,x],[c1,c2,y],….]</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>
-    <span class="hljs-keyword">var</span> _contextLenDef = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(cget, cset, contextExtractor, contextSize, valueSize)</span> {</span>
-        <span class="hljs-keyword">var</span> clen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
-            <span class="hljs-keyword">return</span> cget(context, a);
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-36">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-36">&#182;</a>
-              </div>
-              <p>The context parameter is a list of parameters with fixed size.
-The context size information is for validation and composition.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>
-        clen.specification = {
-            contextSize: contextSize,
-            valueSize: valueSize,
-            size: (valueSize + contextSize)
-        };
-        clen.cget = cget;
-        clen.cset = cset;
-        clen.extract = contextExtractor;</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-37">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-37">&#182;</a>
-              </div>
-              <p>Operation on list of [Context, Value]
-lget extract all possible context using the extractor</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        clen.lget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(container)</span> {</span>
-            <span class="hljs-keyword">if</span> (clen.specification.contextSize === <span class="hljs-number">0</span>) {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-38">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-38">&#182;</a>
-              </div>
-              <p>single len, extract [[value]];</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">return</span> [
-                    [clen.cget([], container)]
-                ];
-            }
-            <span class="hljs-keyword">var</span> listOfContext = clen.extract(container);
-            <span class="hljs-keyword">var</span> listOfContextAndValue = _.chain(listOfContext).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context)</span> {</span>
-                <span class="hljs-keyword">return</span> _.chain(context).union([clen.cget(context, container)]).flatten(<span class="hljs-literal">true</span>).value();
-            }).value();
-            <span class="hljs-keyword">return</span> listOfContextAndValue;
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-39">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-39">&#182;</a>
-              </div>
-              <p>lset sets the values on all provided contexts</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        clen.lset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listOfContextAndValue, container)</span> {</span>
-            <span class="hljs-keyword">if</span> (clen.specification.contextSize === <span class="hljs-number">0</span> &amp;&amp; listOfContextAndValue.length === <span class="hljs-number">0</span>) {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-40">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-40">&#182;</a>
-              </div>
-              <p>single len, set of [] must be mapped to set of [[undefined]]</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">return</span> clen.cset([], <span class="hljs-literal">undefined</span>, container);
-            }
-            <span class="hljs-keyword">return</span> _.chain(listOfContextAndValue)
-                .reduce(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(currContainer, contextAndValue)</span> {</span>
-                    <span class="hljs-keyword">var</span> context = contextAndValue.slice(<span class="hljs-number">0</span>, contextSize);
-                    <span class="hljs-keyword">var</span> value = contextAndValue.slice(contextSize, clen.specification.size);
-                    <span class="hljs-keyword">if</span> (clen.specification.valueSize === <span class="hljs-number">1</span>) {
-                        <span class="hljs-keyword">return</span> clen.cset(context, value[<span class="hljs-number">0</span>], currContainer);
-                    }
-                    <span class="hljs-keyword">return</span> clen.cset(context, value, currContainer);
-
-                }, container).value();
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-41">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-41">&#182;</a>
-              </div>
-              <p>The bind operation just fix the context parameter and return a len.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        clen.bindContext = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context)</span> {</span>
-            _assert(context.length === contextSize, <span class="hljs-string">"context size error"</span>);
-            <span class="hljs-keyword">var</span> bindedGet = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                <span class="hljs-keyword">return</span> cget(context, a);
-            };
-            <span class="hljs-keyword">var</span> bindedSet = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b, a)</span> {</span>
-                <span class="hljs-keyword">return</span> cset(context, b, a);
-            };
-            <span class="hljs-keyword">return</span> _lenDef(bindedGet, bindedSet, clen.specification.valueSize);
-        };
-        clen.bindContextValue = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(contextAndValue)</span> {</span>
-            _assert(contextAndValue.length === clen.specification.size, <span class="hljs-string">"context size error"</span>);
-            <span class="hljs-keyword">var</span> _context = contextAndValue.slice(<span class="hljs-number">0</span>, contextSize);
-            <span class="hljs-keyword">var</span> _value = contextAndValue.slice(contextSize);
-            <span class="hljs-keyword">var</span> _len = clen.bindContext(_context);
-            <span class="hljs-keyword">return</span> {
-                len: _len,
-                value: _value,
-                context: _context
-            };
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-42">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-42">&#182;</a>
-              </div>
-              <p>Modification with a given context</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        clen.mod = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, f, a)</span> {</span>
-            <span class="hljs-keyword">return</span> cset(context, f(cget(context, a)), a);
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-43">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-43">&#182;</a>
-              </div>
-              <p>Context Lenses left composition
-CLen[A,B] ~&gt; CLen[B,C] =&gt; CLen[A,C]
-Context parameters are assumed to be a list of values [l_1,l_2,..,l_n], [r_1,r_2,..,r_m], .
-The composed context is then [l_1,l_2,..,l_n,r_1,r_2,..,r_m].</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        clen.cAndThen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(clenBC)</span> {</span>
-            <span class="hljs-keyword">if</span> (contextSize === <span class="hljs-number">0</span>) {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-44">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-44">&#182;</a>
-              </div>
-              <p>single len, compose without context</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">return</span> simpleAndThen();
-            }
-            <span class="hljs-keyword">if</span> (clenBC.specification.contextSize === <span class="hljs-number">0</span>) {
-                <span class="hljs-keyword">return</span> simpleInverseAndThen();
-            }
-            <span class="hljs-keyword">return</span> realAndThen();
-
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">simpleAndThen</span><span class="hljs-params">()</span> {</span>
-                <span class="hljs-keyword">var</span> simpleCget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
-                    <span class="hljs-keyword">return</span> clenBC.cget(context, clen.cget([], a));
-                };
-                <span class="hljs-keyword">var</span> simpleCset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, c, a)</span> {</span>
-                    <span class="hljs-keyword">return</span> clen.mod([], <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
-                        <span class="hljs-keyword">return</span> clenBC.cset(context, c, b);
-                    }, a);
-                };
-                <span class="hljs-keyword">var</span> simpleExtract = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                    <span class="hljs-keyword">return</span> clenBC.extract(clen.cget([], a));
-                };
-                <span class="hljs-keyword">return</span> _contextLenDef(
-                    simpleCget,
-                    simpleCset,
-                    simpleExtract,
-                    clenBC.specification.contextSize,
-                    clenBC.specification.valueSize
-                );
-            };
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">simpleInverseAndThen</span><span class="hljs-params">()</span> {</span>
-                <span class="hljs-keyword">var</span> simpleCget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
-                    <span class="hljs-keyword">return</span> clenBC.cget([], clen.cget(context, a));
-                };
-                <span class="hljs-keyword">var</span> simpleCset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, c, a)</span> {</span>
-                    <span class="hljs-keyword">return</span> clen.mod(context, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
-                        <span class="hljs-keyword">return</span> clenBC.cset([], c, b);
-                    }, a);
-                };
-                <span class="hljs-keyword">return</span> _contextLenDef(
-                    simpleCget,
-                    simpleCset,
-                    clen.extract,
-                    clen.specification.contextSize,
-                    clenBC.specification.valueSize
-                );
-            };
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">realAndThen</span><span class="hljs-params">()</span> {</span>
-                <span class="hljs-keyword">var</span> compositionContextSize = contextSize + clenBC.specification.contextSize;
-                <span class="hljs-keyword">var</span> compositionValueSize = valueSize * clenBC.specification.valueSize;
-
-                <span class="hljs-keyword">var</span> composedCget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-45">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-45">&#182;</a>
-              </div>
-              <p>validation of context size is realized in the deepest level, so ignore errors here.
- _assert(context.length === compositionContextSize, “context size error”);</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>                    <span class="hljs-keyword">var</span> ABcontext = context.slice(<span class="hljs-number">0</span>, contextSize);
-                    <span class="hljs-keyword">var</span> BCcontext = context.slice(contextSize);
-                    <span class="hljs-keyword">return</span> clenBC(BCcontext, cget(ABcontext, a));
-                };
-                <span class="hljs-keyword">var</span> composedCset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, c, a)</span> {</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-46">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-46">&#182;</a>
-              </div>
-              <p>validation of context size is realized in the deepest level, so ignore errors here.
-_assert(context.length === compositionContextSize, “context size error”);</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>                    <span class="hljs-keyword">var</span> ABcontext = context.slice(<span class="hljs-number">0</span>, contextSize);
-                    <span class="hljs-keyword">var</span> BCcontext = context.slice(contextSize);
-                    <span class="hljs-keyword">return</span> clen.mod(ABcontext, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(b)</span> {</span>
-                        <span class="hljs-keyword">return</span> clenBC.cset(BCcontext, c, b);
-                    }, a);
-                };
-                <span class="hljs-keyword">var</span> composedExtactor = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                    <span class="hljs-keyword">var</span> bContexts = contextExtractor(a);
-                    <span class="hljs-keyword">var</span> contextFinal = _.chain(bContexts).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(singleBContext)</span> {</span>
-                        <span class="hljs-keyword">var</span> cContext = clenBC.extract(cget(singleBContext, a));
-                        <span class="hljs-keyword">return</span> _.map(cContext, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(singleCContext)</span> {</span>
-                            <span class="hljs-keyword">return</span>  _.union(singleBContext, singleCContext);
-                        });
-                    }).flatten(<span class="hljs-literal">true</span>).value();
-                    <span class="hljs-keyword">return</span> contextFinal;
-                };
-                <span class="hljs-keyword">return</span> _contextLenDef(
-                    composedCget,
-                    composedCset,
-                    composedExtactor,
-                    compositionContextSize,
-                    compositionValueSize
-                );
-            };
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-47">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-47">&#182;</a>
-              </div>
-              <p>Right composition.
-CLen[A,B] &lt;~ CLen[C,A] == CLen[C,A] ~&gt; CLen[A,B] =&gt; CLen[C,B]</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        clen.cCompose = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(LenCA)</span> {</span>
-            <span class="hljs-keyword">return</span> LenCA.cAndThen(clen);
-        };
-
-        <span class="hljs-keyword">return</span> clen;
-    };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-48">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-48">&#182;</a>
-              </div>
-              <h2 id="context-lenses-from-lens">Context Lenses from Lens</h2>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-49">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-49">&#182;</a>
-              </div>
-              <p>The simplest context lens have empty context, and are created for any len:</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _contextLenFromLen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(len)</span> {</span>
-        <span class="hljs-keyword">return</span> _contextLenDef(</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-50">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-50">&#182;</a>
-              </div>
-              <p>cget ignores context information</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
-                <span class="hljs-keyword">return</span> len.get(a);
-            },</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-51">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-51">&#182;</a>
-              </div>
-              <p>cset ignores context information</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, b, a)</span> {</span>
-                <span class="hljs-keyword">return</span> len.set(b, a);
-            },</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-52">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-52">&#182;</a>
-              </div>
-              <p>from any container, the context is a empty list of parameters</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                <span class="hljs-keyword">return</span> [
-                    []
-                ];
-            },</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-53">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-53">&#182;</a>
-              </div>
-              <p>context size is zero</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-number">0</span>,
-            len.specification.valueSize
-        );
-    };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-54">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-54">&#182;</a>
-              </div>
-              <h2 id="map-context-len">Map context Len</h2>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-55">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-55">&#182;</a>
-              </div>
-              <p>Context is given by the key maps.</p>
-<p>The Option construction is not used, so undefined is assumed to be None.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _mapContextLenTemplate = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(options)</span> {</span>
-        <span class="hljs-keyword">var</span> fillEmpty = options.fillEmpty || <span class="hljs-literal">false</span>;
-        <span class="hljs-keyword">return</span> _contextLenDef(
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, a)</span> {</span>
-                _assert(_.isArray(context), <span class="hljs-string">"context for map must be a single value"</span>);
-                _assert(context.length === <span class="hljs-number">1</span>, <span class="hljs-string">"context for map must be a single value"</span>);
-                <span class="hljs-keyword">var</span> key = context[<span class="hljs-number">0</span>];
-                <span class="hljs-keyword">var</span> value = a[key];
-                <span class="hljs-keyword">if</span> (fillEmpty &amp;&amp; _.isUndefined(value)) {
-                    <span class="hljs-keyword">return</span> {};
-                }
-                <span class="hljs-keyword">return</span> value;
-            },
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, b, a)</span> {</span>
-                _assert(_.isArray(context), <span class="hljs-string">"context for map must be a single value"</span>);
-                _assert(context.length === <span class="hljs-number">1</span>, <span class="hljs-string">"context for map must be a single value"</span>);
-                <span class="hljs-keyword">var</span> key = context[<span class="hljs-number">0</span>];
-                a[key] = b;
-                <span class="hljs-keyword">return</span> a;
-            },</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-56">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-56">&#182;</a>
-              </div>
-              <p>Each key is a possible context value</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
-                <span class="hljs-keyword">var</span> keys = _.keys(a);
-                <span class="hljs-keyword">if</span> (keys.length === <span class="hljs-number">0</span>) {
-                    <span class="hljs-keyword">return</span> [];
-                }
-                <span class="hljs-keyword">return</span> _.chain(keys).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(key)</span> {</span>
-                    <span class="hljs-keyword">return</span> [key];
-                }).value();
-            },</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-57">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-57">&#182;</a>
-              </div>
-              <p>One parameter on the context, the key value</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-number">1</span>,
-            <span class="hljs-number">1</span>
-        );
-    };
-    <span class="hljs-keyword">var</span> _mapContextLenLeaf = _mapContextLenTemplate({fillEmpty: <span class="hljs-literal">false</span>});
-    <span class="hljs-keyword">var</span> _mapContextLen = _mapContextLenTemplate({fillEmpty: <span class="hljs-literal">true</span>});
-
-    <span class="hljs-keyword">var</span> _idCLen = _contextLenFromLen(_idLen);
-    _idCLen.cAndThen = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(cLenBC)</span> {</span>
-        <span class="hljs-keyword">return</span> cLenBC;
-    };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-58">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-58">&#182;</a>
-              </div>
-              <h1 id="build-complex-context-lenses-from-expressions-">Build complex context lenses from expressions.</h1>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-59">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-59">&#182;</a>
-              </div>
-              <p>Build a complex context len with parameter on Maps values.
-The final part definition can be a Telescope with a list of lens to extract values from leaf values.</p>
-<p>Examples:
-a.b.c
-a.b.{:person}
-a.b.{:person}.name
-a.b.{:person}.contacts.{:contact}.name
-a.b.{:person}.(name,lastname,age)
-a.b.{:person}.(name,lastname,age,contacts)
-TODO add set lens expressions
-Syntax:
-Expression := ( Part ‘.’ )<em> TelescopePart?
-Part             := FieldLenPart | MapLenPart
-FieldLenPart     :=  fieldName::String
-MapLenPart       := ‘{‘ mapKeyName::String ‘}’
-TelescopePart    := ‘(‘  ( FieldLen ‘,’) </em> ‘)’
-FieldLen         :=  (FieldLenPart ‘.’)*</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> _compileExpression = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(cLenExpressionRaw)</span> {</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-60">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-60">&#182;</a>
-              </div>
-              <p>clear white spaces</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> cLenExpression = cLenExpressionRaw.replace(<span class="hljs-regexp">/ /g</span>, <span class="hljs-string">''</span>);</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-61">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-61">&#182;</a>
-              </div>
-              <p>Util function, apply composition on cAndThen.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> cAndThenComposition = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(currContextLen, nextPart)</span> {</span>
-            <span class="hljs-keyword">return</span> currContextLen.cAndThen(nextPart);
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-62">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-62">&#182;</a>
-              </div>
-              <p>Util function, apply composition on andThen.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> andThenComposition = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(currLen, nextPart)</span> {</span>
-            <span class="hljs-keyword">return</span> currLen.andThen(nextPart);
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-63">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-63">&#182;</a>
-              </div>
-              <h2 id="fieldlens-parts-builder">FieldLens parts builder</h2>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-64">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-64">&#182;</a>
-              </div>
-              <p>Part is the field name</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> fieldPartBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(part, last)</span> {</span>
-            <span class="hljs-keyword">return</span> _contextLenFromLen(_fieldLenTemplate(part, {fillEmpty: !last}));
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-65">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-65">&#182;</a>
-              </div>
-              <h2 id="maplens-parts-">MapLens parts.</h2>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-66">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-66">&#182;</a>
-              </div>
-              
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> mapPartBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(part, last)</span> {</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-67">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-67">&#182;</a>
-              </div>
-              <p>TODO parameter name is not used, maybe for cross product will be necessary.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">if</span> (last) {
-                <span class="hljs-keyword">return</span> _mapContextLenLeaf;
-            } <span class="hljs-keyword">else</span> {
-                <span class="hljs-keyword">return</span> _mapContextLen;
-            }
-        };
-        <span class="hljs-keyword">var</span> telescopePartBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(part, last)</span> {</span>
-            _assert(last === <span class="hljs-literal">true</span>, <span class="hljs-string">" telescope parts must be at the end of the context len extression"</span>);</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-68">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-68">&#182;</a>
-              </div>
-              <p>Telescope is a list of nested field lens
-Example:
-( internal.att1, internal.att2, other.refValue ).</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">var</span> setParams = (<span class="hljs-regexp">/\((.*)\)/gi</span>).exec(part)[<span class="hljs-number">1</span>];
-            <span class="hljs-keyword">var</span> telescopeLensDefinitions = setParams.length == <span class="hljs-number">0</span> ? [] : setParams.split(<span class="hljs-string">","</span>);
-
-            <span class="hljs-keyword">var</span> buildLenFromListOfFields = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listOfFields)</span> {</span>
-                <span class="hljs-keyword">return</span> _.chain(listOfFields)
-                    .map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(fieldName, index)</span> {</span>
-                        <span class="hljs-keyword">var</span> isLast = ((listOfFields.length - index - <span class="hljs-number">1</span>) === <span class="hljs-number">0</span> );
-                        <span class="hljs-keyword">return</span> _fieldLenTemplate(fieldName, {fillEmpty: !isLast})
-                    })
-                    .reduce(andThenComposition, _idLen)
-                    .value();
-            };
-
-            <span class="hljs-keyword">var</span> listOfLens = _.chain(telescopeLensDefinitions)
-                .map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(lenDefinition)</span> {</span>
-                    <span class="hljs-keyword">return</span> lenDefinition.split(<span class="hljs-string">"."</span>);
-                })
-                .map(buildLenFromListOfFields)
-                .value();
-            <span class="hljs-keyword">return</span> _contextLenFromLen(_telescope(listOfLens));
-        };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-69">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-69">&#182;</a>
-              </div>
-              <h2 id="construction-implementation">Construction implementation</h2>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-70">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-70">&#182;</a>
-              </div>
-              
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-71">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-71">&#182;</a>
-              </div>
-              <p>Extract final telescope expression</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> telescopeSeparator = cLenExpression.indexOf(<span class="hljs-string">"("</span>);
-        <span class="hljs-keyword">var</span> parts;
-        <span class="hljs-keyword">if</span> (telescopeSeparator == -<span class="hljs-number">1</span>) {
-
-            parts = cLenExpression.split(<span class="hljs-string">"."</span>);
-        } <span class="hljs-keyword">else</span> {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-72">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-72">&#182;</a>
-              </div>
-              <p>expression is a.b.c.(telescope) -&gt; split to a.b.c (telescope)</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">var</span> contextParts = cLenExpression.substring(<span class="hljs-number">0</span>, telescopeSeparator - <span class="hljs-number">1</span>);
-            <span class="hljs-keyword">var</span> telescopePart = cLenExpression.substring(telescopeSeparator);
-            parts = contextParts.split(<span class="hljs-string">"."</span>);
-            parts.push(telescopePart)
-        }</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-73">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-73">&#182;</a>
-              </div>
-              <p>Split len expression in ‘.’ separated parts</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> cLenInstance = _.chain(parts).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(part, index)</span> {</span>
-            <span class="hljs-keyword">var</span> type = part.charAt(<span class="hljs-number">0</span>);
-            <span class="hljs-keyword">var</span> isLast = ((parts.length - index - <span class="hljs-number">1</span>) === <span class="hljs-number">0</span> );</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-74">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-74">&#182;</a>
-              </div>
               <p>Switch to the different part builders.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-keyword">switch</span> (type) {
-                <span class="hljs-keyword">case</span> <span class="hljs-string">'('</span>:
-                    <span class="hljs-keyword">return</span> telescopePartBuilder(part, isLast);
-                <span class="hljs-keyword">case</span> <span class="hljs-string">'{'</span>:
-                    <span class="hljs-keyword">return</span> mapPartBuilder(part, isLast);
-                <span class="hljs-keyword">default</span> :
-                    <span class="hljs-keyword">return</span> fieldPartBuilder(part, isLast);
-            }
-        }).reduce(cAndThenComposition, _idCLen).value();
-        cLenInstance.signature = cLenExpression;
-        <span class="hljs-keyword">return</span> cLenInstance;
-    };</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-75">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-75">&#182;</a>
-              </div>
-              <p>Public api.</p>
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">switch</span> (type) {
+                    <span class="hljs-keyword">case</span> <span class="hljs-string">'('</span>:
+                        <span class="hljs-keyword">return</span> telescopePartBuilder(part, isLast);
+                    <span class="hljs-keyword">case</span> <span class="hljs-string">'{'</span>:
+                        <span class="hljs-keyword">return</span> mapPartBuilder(part, isLast);
+                    <span class="hljs-keyword">default</span> :
+                        <span class="hljs-keyword">return</span> fieldPartBuilder(part, isLast);
+                }
+            }).reduce(contextLenses.contextLenComposition, contextLenses.idContextLen).value();
+            cLenInstance.signature = contextLenExpression;
+            <span class="hljs-keyword">return</span> cLenInstance;
+        }
 
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    _.mixin({
-        lenDef: _lenDef,
-        lenNil: _nilLen,
-        lenIdentity: _idLen,
-        fieldLen: _fieldLenTemplate,
-        buildContextLen: _compileExpression,
-        telescope: _telescope
-    });
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_crossProduct</span><span class="hljs-params">()</span> {</span>
+            _assert(<span class="hljs-built_in">arguments</span>.length &gt; <span class="hljs-number">1</span>, <span class="hljs-string">"Pass at least 2 clens to build a cross product"</span>);
+            <span class="hljs-keyword">var</span> args = <span class="hljs-built_in">Array</span>.prototype.slice.call(<span class="hljs-built_in">arguments</span>);
+            <span class="hljs-keyword">var</span> head = args[<span class="hljs-number">0</span>];
+            <span class="hljs-keyword">var</span> tail = _.tail(args);
+            <span class="hljs-keyword">return</span> _.reduce(tail, crossProductComposition, head);
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossProductComposition</span><span class="hljs-params">(Aclen, Bclen)</span> {</span>
+            <span class="hljs-keyword">var</span> crossContextSize = Aclen.spec.contextSize + Bclen.spec.contextSize;
+            <span class="hljs-keyword">var</span> crossValueSize = Aclen.spec.valueSize + Bclen.spec.valueSize;
+            <span class="hljs-keyword">var</span> crossProductSignature = Aclen.spec.signature + <span class="hljs-string">" X "</span> + Bclen.spec.signature;
+            <span class="hljs-keyword">var</span> crossProductOptions = {
+                contextSize: crossContextSize,
+                valueSize: crossValueSize,
+                signature: crossProductSignature
+            };
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossCget</span><span class="hljs-params">(context, a)</span> {</span>
+                <span class="hljs-keyword">var</span> Acontext = context.slice(<span class="hljs-number">0</span>, Aclen.spec.contextSize);
+                <span class="hljs-keyword">var</span> Bcontext = context.slice(Aclen.spec.contextSize);
+                <span class="hljs-keyword">var</span> AValues = Aclen.cget(Acontext, a);
+                <span class="hljs-keyword">var</span> BValues = Bclen.cget(Bcontext, a);
+                <span class="hljs-keyword">if</span> (Aclen.spec.valueSize === <span class="hljs-number">1</span>) {
+                    AValues = [AValues];
+                }
+                <span class="hljs-keyword">if</span> (Bclen.spec.valueSize === <span class="hljs-number">1</span>) {
+                    BValues = [BValues];
+                }
+                <span class="hljs-keyword">return</span> AValues.concat(BValues);
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossCset</span><span class="hljs-params">(context, c, a)</span> {</span>
+                <span class="hljs-keyword">if</span> (_.isUndefined(c)) {
+                    c = _.range(crossValueSize).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+                        <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
+                    });
+                }
+                <span class="hljs-keyword">var</span> Acontext = context.slice(<span class="hljs-number">0</span>, Aclen.spec.contextSize);
+                <span class="hljs-keyword">var</span> Bcontext = context.slice(Aclen.spec.contextSize);
+                <span class="hljs-keyword">var</span> Avalue = c.slice(<span class="hljs-number">0</span>, Aclen.spec.valueSize);
+                <span class="hljs-keyword">var</span> Bvalue = c.slice(Aclen.spec.valueSize);
+                <span class="hljs-keyword">if</span> (Aclen.spec.valueSize === <span class="hljs-number">1</span>) {
+                    Avalue = Avalue[<span class="hljs-number">0</span>];
+                }
+                <span class="hljs-keyword">if</span> (Bclen.spec.valueSize === <span class="hljs-number">1</span>) {
+                    Bvalue = Bvalue[<span class="hljs-number">0</span>];
+                }
+                <span class="hljs-keyword">var</span> afterA = Aclen.cset(Acontext, Avalue, a);
+                <span class="hljs-keyword">var</span> afterB = Bclen.cset(Bcontext, Bvalue, afterA);
+                <span class="hljs-keyword">return</span> afterB;
+            }
+
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossExtactor</span><span class="hljs-params">(a)</span> {</span>
+                <span class="hljs-keyword">var</span> Acontexts = Aclen.extract(a);
+                <span class="hljs-keyword">var</span> Bcontexts = Bclen.extract(a);
+                <span class="hljs-keyword">return</span> _.chain(Acontexts).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(aContextSingle)</span> {</span>
+                    <span class="hljs-keyword">return</span> _.chain(Bcontexts).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(bContextSingle)</span> {</span>
+                        <span class="hljs-keyword">return</span> _.flatten([aContextSingle, bContextSingle], <span class="hljs-literal">true</span>);
+                    }).value();
+                }).flatten(<span class="hljs-literal">true</span>).value();
+            }
+
+            <span class="hljs-keyword">var</span> finalCross = contextLenses.defineContextLen(crossCget, crossCset, crossExtactor, crossProductOptions);
+            finalCross.signature = crossProductSignature;
+            <span class="hljs-keyword">return</span> finalCross;
+        }
+
+
+        <span class="hljs-keyword">return</span> {
+            buildContextLen: _buildNestedContextLen,
+            crossProduct: _crossProduct
+        };
+
+    })(underscoreRef, lensesModule, contextLensesModule);
+
+    root.eelnss = {
+        lenses: lensesModule,
+        contextLenses: contextLensesModule,
+        tableIterators: tableIteratorModule,
+        api: publicApiModule
+    };
+
 })(<span class="hljs-keyword">this</span>);</pre></div></div>
             
         </li>
