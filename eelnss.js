@@ -282,7 +282,7 @@
 
         var _nilLen = (function () {
             function nilGetter(a) {
-                return undefined;
+                return void(0);
             }
 
             function nilSetter(b, a) {
@@ -484,7 +484,7 @@
             }
             clen.lset = function (listContextValue, container) {
                 if (_.isUndefined(listContextValue) || listContextValue.length === 0) {
-                    return clen.cset([], undefined, container);
+                    return clen.cset([], void(0), container);
                 }
                 return _listContextSetter(clen, listContextValue, container);
             };
@@ -811,7 +811,7 @@
             function crossCset(context, c, a) {
                 if (_.isUndefined(c)) {
                     c = _.range(crossValueSize).map(function () {
-                        return undefined;
+                        return void(0);
                     });
                 }
                 var Acontext = context.slice(0, Aclen.spec.contextSize);
