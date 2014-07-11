@@ -103,7 +103,7 @@ var contextLensesLaws = (function (utils) {
 
     function _checkContextLensesLaws(clen, containerBuilder, listOfValues) {
         var zeroContainer = function () {
-            return clen.lset([], containerBuilder());
+            return clen.lset(undefined, containerBuilder());
         };
         // lset lget law
         propEqual(clen.lget(clen.lset(listOfValues, zeroContainer())), listOfValues, " lget(lset(v,c)) == v ");

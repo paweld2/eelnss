@@ -109,6 +109,7 @@
                     return pullResult;
                 };
             }
+
             return _tableIterator(pullFromSourceBuilder, contextValueSizes);
         }
 
@@ -220,6 +221,7 @@
                 return _abstractSourceIterator(aContextValuesSizes.concat(bContextValuesSizes), crossIteratorExtractorBuilder);
             }
         }
+
         // because context is explicit and ordered, it is necessary to change the order of the columns
         function _crossProductTables(tables, contextValuesSizes) {
             _assert(tables.length > 1, "Pass at least 2 table iterators to build a cross product");
@@ -245,6 +247,7 @@
                 }).flatten(true).value();
             }
         }
+
         return {
             tableIterator: _tableIterator,
             tableIteratorFromTable: _tableIteratorFromTable,
@@ -257,12 +260,13 @@
 
     var lensesModule = (function (_) {
 
-        function _defineLen(getter, setter, options) {
-            var opt = options || {};
+        function _defineLen(getter, setter, specification) {
+            _assert(_.has(specification, "signature"), "No signature in specification");
+            _assert(_.has(specification, "valueSize"), "No valueSize in specification");
             var len = {};
             len.spec = {
-                signature: opt.signature || "not provided",
-                valueSize: opt.valueSize || 1
+                signature: specification.signature,
+                valueSize: specification.valueSize
             };
             len.get = getter;
             len.set = setter;
@@ -356,7 +360,10 @@
                 return _.chain(a).clone().extend(extendO).value();
             }
 
-            return _defineLen(fieldGetter, fieldSetter, fieldName);
+            return _defineLen(fieldGetter, fieldSetter, {
+                signature: fieldName,
+                valueSize: 1
+            });
         }
 
         function _fieldLenLeaf(fieldName) {
@@ -393,7 +400,10 @@
                 }, a);
             }
 
-            var telescopeSignature = _.reduce(listOfLens, function (accum, len) {
+            var telescopeSignature = _.reduce(listOfLens, function (accum, len, index) {
+                if( index === listOfLens.length -1 ) {
+                    return accum + len.spec.signature;
+                }
                 return accum + len.spec.signature + ",";
             }, "(") + ")";
 
@@ -433,14 +443,22 @@
 
     // Context is a single value
     var contextLensesModule = (function (_, lenses) {
-        function _defineContextLen(contextGetter, contextSetter, contextExtractor, options) {
-            var opt = options || {};
+        function _defineContextLen(contextGetter, contextSetter, contextExtractor, specification, pointersMap, selfPointer) {
+            _assert(_.has(specification, "contextSize"), "No contextSize in specification");
+            _assert(_.has(specification, "valueSize"), "No valueSize in specification");
+            _assert(_.has(specification, "signature"), "No signature in specification");
+            var opt = specification || {};
             var clen = {};
             clen.spec = {
-                contextSize: opt.contextSize || 0,
-                valueSize: opt.valueSize || 1,
-                signature: opt.signature || "not provider"
+                contextSize: opt.contextSize,
+                valueSize: opt.valueSize,
+                signature: opt.signature,
+                selfPointer: selfPointer
             };
+            clen.pointers = pointersMap;
+            if (selfPointer) {
+                clen.pointers[selfPointer] = clen;
+            }
             clen.spec.size = clen.spec.contextSize + clen.spec.valueSize;
             clen.cget = contextGetter;
             clen.cset = contextSetter;
@@ -458,21 +476,18 @@
                     }
                     return [contextWithValue];
                 };
-                clen.lset = function (listContextValue, container) {
-                    if (listContextValue.length === 0) {
-                        // single len, set of [] must be mapped to set of [[undefined]]
-                        return clen.cset([], undefined, container);
-                    }
-                    return _listContextSetter(clen, listContextValue, container);
-                };
+
             } else {
                 clen.lget = function (container) {
                     return _listContextGetter(clen, container);
                 };
-                clen.lset = function (listContextValue, container) {
-                    return _listContextSetter(clen, listContextValue, container);
-                };
             }
+            clen.lset = function (listContextValue, container) {
+                if (_.isUndefined(listContextValue) || listContextValue.length === 0) {
+                    return clen.cset([], undefined, container);
+                }
+                return _listContextSetter(clen, listContextValue, container);
+            };
             // The bind operation just fix the context parameter and return a len.
             clen.bindContext = function (context) {
                 _assert(context.length === clen.spec.contextSize, "context size error");
@@ -538,7 +553,7 @@
                     contextSize: 0,
                     valueSize: len.spec.valueSize,
                     signature: len.spec.signature
-                }
+                }, {}, len.spec.signature
             );
         }
 
@@ -548,6 +563,9 @@
 
             function cgetMap(context, a) {
                 _assert(_.isArray(context), "context for map must be a single value");
+                if (fillEmpty && context.length === 0) {
+                    return {};
+                }
                 _assert(context.length === 1, "context for map must be a single value");
                 var key = context[0];
                 var value = a[key];
@@ -559,10 +577,17 @@
 
             function csetMap(context, b, a) {
                 _assert(_.isArray(context), "context for map must be a single value");
+                if (context.length === 0) {
+                    return a;
+                }
                 _assert(context.length === 1, "context for map must be a single value");
                 var key = context[0];
-                a[key] = b;
-                return a;
+                if (_.isUndefined(b)) {
+                    return _.omit(a, key);
+                }
+                var extendO = {};
+                extendO[key] = b;
+                return _.chain(a).clone().extend(extendO).value();
             }
 
             function contextExtractorMap(a) {
@@ -579,19 +604,21 @@
                     contextSize: 1,
                     valueSize: 1,
                     signature: "{:map}"
-                }
+                }, {}
             );
         }
 
         var _mapContextLenLeaf = _mapContextLenTemplate(false);
         var _mapContextLen = _mapContextLenTemplate(true);
 
-
         function _contextAndThenComposition(cLenAB, cLenBC) {
             if (cLenAB === _idContextLen) {
                 return cLenBC;
             }
-            var cAndThenSignature = cLenAB.spec.signature + " cAndThen " + cLenBC.spec.signature;
+            if (cLenBC === _idContextLen) {
+                return cLenAB;
+            }
+            var cAndThenSignature = cLenAB.spec.signature + "." + cLenBC.spec.signature;
             var cAndThenContextSize = cLenAB.spec.contextSize + cLenBC.spec.contextSize;
             var cAndThenValueSize = cLenAB.spec.valueSize * cLenBC.spec.valueSize;
             var cAndThenOptions = {
@@ -599,6 +626,11 @@
                 valueSize: cAndThenValueSize,
                 signature: cAndThenSignature
             };
+            var cAndThenPartialPoints = _.extend(cLenAB.pointers, cLenBC.pointers);
+            var selfPointer;
+            if (cLenAB.spec.selfPointer && cLenBC.spec.selfPointer) {
+                selfPointer = cLenAB.spec.selfPointer + '.' + cLenBC.spec.selfPointer;
+            }
 
             if (cLenAB.spec.contextSize === 0) {
                 return simpleAndThen();
@@ -620,7 +652,7 @@
                 var simpleExtract = function (a) {
                     return cLenBC.extract(cLenAB.cget([], a));
                 };
-                return _defineContextLen(simpleCget, simpleCset, simpleExtract, cAndThenOptions);
+                return _defineContextLen(simpleCget, simpleCset, simpleExtract, cAndThenOptions, cAndThenPartialPoints, selfPointer);
             }
 
             function simpleInverseAndThen() {
@@ -632,7 +664,7 @@
                         return cLenBC.cset([], c, b);
                     }, a);
                 };
-                return _defineContextLen(simpleCget, simpleCset, cLenAB.extract, cAndThenOptions);
+                return _defineContextLen(simpleCget, simpleCset, cLenAB.extract, cAndThenOptions, cAndThenPartialPoints, selfPointer);
             }
 
             function realCAndThen() {
@@ -656,7 +688,7 @@
                         });
                     }).flatten(true).value();
                 };
-                return _defineContextLen(composedCget, composedCset, composedExtactor, cAndThenOptions);
+                return _defineContextLen(composedCget, composedCset, composedExtactor, cAndThenOptions, cAndThenPartialPoints, selfPointer);
             }
         }
 
@@ -685,7 +717,6 @@
             }
 
             function fieldPartBuilder(part, last) {
-                // TODO parameter name is not used, maybe for cross product will be necessary.
                 if (last) {
                     return contextLenses.contextLenFromLen(lenses.fieldLenLeaf(part));
                 } else {
@@ -694,12 +725,18 @@
             }
 
             function mapPartBuilder(part, last) {
-                // TODO parameter name is not used, maybe for cross product will be necessary.
+                var mapcLen;
                 if (last) {
-                    return contextLenses.mapContextLenLeaf;
+                    mapcLen = contextLenses.mapContextLenLeaf;
                 } else {
-                    return contextLenses.mapContextLen;
+                    mapcLen = _.clone(contextLenses.mapContextLen);
                 }
+                mapcLen.pointers = {};
+                mapcLen.pointers[part] = mapcLen;
+                mapcLen.spec = _.clone(mapcLen.spec);
+                mapcLen.spec.selfPointer = part;
+                mapcLen.spec.signature = part;
+                return mapcLen;
             }
 
             // clear white spaces
