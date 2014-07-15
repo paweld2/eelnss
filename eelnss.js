@@ -160,9 +160,9 @@
             var args = Array.prototype.slice.call(arguments);
             var head = args[0];
             var tail = _.tail(args);
-            return _.reduce(tail, crossProductTableIterators, head);
+            return _.reduce(tail, _crossProductTableIteratorsReduction, head);
 
-            function crossProductTableIterators(aIterator, bIterator) {
+            function _crossProductTableIteratorsReduction(aIterator, bIterator) {
                 var aContextValuesSizes = aIterator.spec.contextValueSizes;
                 var bContextValuesSizes = bIterator.spec.contextValueSizes;
                 var crossIteratorExtractorBuilder = function () {
@@ -230,8 +230,8 @@
             var head = tableAndSize[0];
             var tail = _.tail(tableAndSize);
 
-            return _.reduce(tail, _crossProductTableIterators, head);
-            function _crossProductTableIterators(a, b) {
+            return _.reduce(tail, _crossProductTablesReduction, head);
+            function _crossProductTablesReduction(a, b) {
                 var aTable = a[0];
                 var aContextValueSizes = a[1];
                 var aContextSize = aContextValueSizes.length;
@@ -263,10 +263,12 @@
         function _defineLen(getter, setter, specification) {
             _assert(_.has(specification, "signature"), "No signature in specification");
             _assert(_.has(specification, "valueSize"), "No valueSize in specification");
+            _assert(_.has(specification, "valueMap"), "No valueMap in specification");
             var len = {};
             len.spec = {
                 signature: specification.signature,
-                valueSize: specification.valueSize
+                valueSize: specification.valueSize,
+                valueMap: specification.valueMap
             };
             len.get = getter;
             len.set = setter;
@@ -291,7 +293,8 @@
 
             return _defineLen(nilGetter, nilSetter, {
                 signature: "nil",
-                valueSize: 0
+                valueSize: 0,
+                valueMap: []
             });
         })();
 
@@ -306,7 +309,8 @@
 
             return _defineLen(idGetter, idSetter, {
                 signature: "ID",
-                valueSize: 1
+                valueSize: 1,
+                valueMap: ["ID"]
             });
         })();
 
@@ -330,7 +334,8 @@
             var valueSize = lenAB.spec.valueSize * lenBC.spec.valueSize;
             return _defineLen(andThenGetter, andThenSetter, {
                 signature: signature,
-                valueSize: valueSize
+                valueSize: valueSize,
+                valueMap: lenBC.spec.valueMap
             });
         }
 
@@ -362,7 +367,8 @@
 
             return _defineLen(fieldGetter, fieldSetter, {
                 signature: fieldName,
-                valueSize: 1
+                valueSize: 1,
+                valueMap: [fieldName]
             });
         }
 
@@ -401,15 +407,19 @@
             }
 
             var telescopeSignature = _.reduce(listOfLens, function (accum, len, index) {
-                if( index === listOfLens.length -1 ) {
+                if (index === listOfLens.length - 1) {
                     return accum + len.spec.signature;
                 }
                 return accum + len.spec.signature + ",";
             }, "(") + ")";
+            var telescopeValueMap = _.chain(listOfLens).map(function (len) {
+                return len.spec.valueMap;
+            }).flatten(true).value();
 
             return _defineLen(telescopeGetter, telescopeSetter, {
                 signature: telescopeSignature,
-                valueSize: listOfLens.length
+                valueSize: listOfLens.length,
+                valueMap: telescopeValueMap
             });
         }
 
@@ -441,23 +451,87 @@
         };
     })(underscoreRef);
 
+    var booleanFunctionsModule = (function () {
+        function _andComposition(elements) {
+            return function (state) {
+                return _.every(elements, function (testSubFunction) {
+                    return testSubFunction(state);
+                });
+            };
+        }
+
+        function _orComposition(elements) {
+            return function (state) {
+                return _.some(elements, function (testSubFunction) {
+                    return testSubFunction(state);
+                });
+            };
+        }
+
+        function _buildBooleanCheckerForArrayValue(expectedValue, indexInArray) {
+            return function (stateAsArray) {
+                return stateAsArray[indexInArray] === expectedValue;
+            };
+        }
+
+
+        // Build a Array => bool function.
+        // arrayNamesSpecification is a map {columnName -> indexInArray }
+        // queryObject encode a list of boolean criteria.
+        // AND case: each key is a columnName and value is not an object
+        // OR case: there is a key that contains a object.
+        function _arrayBooleanFromQueryObject(arrayNamesSpecification, queryObject) {
+            function _buildSingleCriteria(value, indexNumber) {
+                if (_.isObject(value)) {
+                    return _arrayBooleanFromQueryObject(arrayNamesSpecification, value);
+                } else {
+                    return _buildBooleanCheckerForArrayValue(value, indexNumber);
+                }
+            }
+
+            var isOr = _.chain(queryObject).values().some(function (value) {
+                return _.isObject(value);
+            }).value();
+            var singleCriteria = _.chain(queryObject).keys().map(function (key) {
+                var value = queryObject[key];
+                var indexValue = arrayNamesSpecification[key];
+                return _buildSingleCriteria(value, indexValue);
+            }).value();
+            if (isOr) {
+                return _orComposition(singleCriteria);
+            } else {
+                return _andComposition(singleCriteria);
+            }
+        }
+
+        return {
+            buildCriteria: _arrayBooleanFromQueryObject
+        };
+
+    })(underscoreRef);
+
     // Context is a single value
-    var contextLensesModule = (function (_, lenses) {
-        function _defineContextLen(contextGetter, contextSetter, contextExtractor, specification, pointersMap, selfPointer) {
+    var contextLensesModule = (function (_, lenses, booleanFunctions) {
+        function _defineContextLen(contextGetter, contextSetter, contextExtractor, specification) {
             _assert(_.has(specification, "contextSize"), "No contextSize in specification");
             _assert(_.has(specification, "valueSize"), "No valueSize in specification");
             _assert(_.has(specification, "signature"), "No signature in specification");
+            _assert(_.has(specification, "pointers"), "No pointers in specification");
+            _assert(_.has(specification, "contextMap"), "No contextMap in specification");
+            _assert(_.has(specification, "valueMap"), "No valueMap in specification");
             var opt = specification || {};
             var clen = {};
             clen.spec = {
                 contextSize: opt.contextSize,
                 valueSize: opt.valueSize,
                 signature: opt.signature,
-                selfPointer: selfPointer
+                pointers: opt.pointers,
+                contextMap: opt.contextMap,
+                valueMap: opt.valueMap,
+                selfPointer: opt.selfPointer
             };
-            clen.pointers = pointersMap;
-            if (selfPointer) {
-                clen.pointers[selfPointer] = clen;
+            if (clen.spec.selfPointer) {
+                clen.spec.pointers[clen.spec.selfPointer] = clen;
             }
             clen.spec.size = clen.spec.contextSize + clen.spec.valueSize;
             clen.cget = contextGetter;
@@ -466,7 +540,7 @@
             clen.cmod = function (context, f, a) {
                 return clen.cset(context, f(clen.cget(context, a)), a);
             };
-            if (clen.spec.contextSize == 0) {
+            if (clen.spec.contextSize === 0) {
                 clen.lget = function (container) {
                     var contextWithValue;
                     if (clen.spec.valueSize === 1) {
@@ -499,7 +573,8 @@
                 };
                 return lenses.defineLen(bindedGet, bindedSet, {
                     signature: clen.spec.signature,
-                    valueSize: clen.spec.valueSize
+                    valueSize: clen.spec.valueSize,
+                    valueMap: clen.spec.valueMap
                 });
             };
             clen.bindContextValue = function (contextAndValue) {
@@ -513,8 +588,25 @@
                     context: _context
                 };
             };
+            clen.find = function(queryCriteria){
+                var arrayColumns = clen.spec.contextMap.concat(clen.spec.valueMap);
+                var arraySpec = _.chain(arrayColumns).reduce(function(spec,colName,index){
+                    spec[colName] = index;
+                    return spec;
+                }, {}).value();
+                var criteria = booleanFunctions.buildCriteria(arraySpec,queryCriteria);
+                return {
+                    on: function(state){
+                        //TODO use internal iterators and make a fast filter for nested lenses
+                        return _.chain(clen.lget(state)).filter(function(arrayValues){
+                            return criteria(arrayValues);
+                        }).value();
+                    }
+                };
+            };
             return clen;
         }
+
 
         function _listContextGetter(cLen, container) {
             return _.chain(cLen.extract(container)).map(function (context) {
@@ -552,8 +644,12 @@
             return _defineContextLen(cgetFromLen, csetFromLen, _emptyExtractor, {
                     contextSize: 0,
                     valueSize: len.spec.valueSize,
-                    signature: len.spec.signature
-                }, {}, len.spec.signature
+                    signature: len.spec.signature,
+                    pointers: {},
+                    contextMap: [],
+                    valueMap: len.spec.valueMap,
+                    selfPointer: len.spec.signature
+                }
             );
         }
 
@@ -603,8 +699,12 @@
             return _defineContextLen(cgetMap, csetMap, contextExtractorMap, {
                     contextSize: 1,
                     valueSize: 1,
-                    signature: "{:map}"
-                }, {}
+                    signature: "{:map}",
+                    pointers: {},
+                    contextMap: ["map"],
+                    valueMap: ["_"],
+                    selfPointer: undefined
+                }
             );
         }
 
@@ -621,16 +721,20 @@
             var cAndThenSignature = cLenAB.spec.signature + "." + cLenBC.spec.signature;
             var cAndThenContextSize = cLenAB.spec.contextSize + cLenBC.spec.contextSize;
             var cAndThenValueSize = cLenAB.spec.valueSize * cLenBC.spec.valueSize;
-            var cAndThenOptions = {
-                contextSize: cAndThenContextSize,
-                valueSize: cAndThenValueSize,
-                signature: cAndThenSignature
-            };
-            var cAndThenPartialPoints = _.extend(cLenAB.pointers, cLenBC.pointers);
+            var cAndThenPartialPoints = _.extend(cLenAB.spec.pointers, cLenBC.spec.pointers);
             var selfPointer;
             if (cLenAB.spec.selfPointer && cLenBC.spec.selfPointer) {
                 selfPointer = cLenAB.spec.selfPointer + '.' + cLenBC.spec.selfPointer;
             }
+            var cAndThenSpecification = {
+                contextSize: cAndThenContextSize,
+                valueSize: cAndThenValueSize,
+                signature: cAndThenSignature,
+                pointers: cAndThenPartialPoints,
+                contextMap: cLenAB.spec.contextMap.concat(cLenBC.spec.contextMap),
+                valueMap: cLenBC.spec.valueMap,
+                selfPointer: selfPointer
+            };
 
             if (cLenAB.spec.contextSize === 0) {
                 return simpleAndThen();
@@ -652,7 +756,7 @@
                 var simpleExtract = function (a) {
                     return cLenBC.extract(cLenAB.cget([], a));
                 };
-                return _defineContextLen(simpleCget, simpleCset, simpleExtract, cAndThenOptions, cAndThenPartialPoints, selfPointer);
+                return _defineContextLen(simpleCget, simpleCset, simpleExtract, cAndThenSpecification);
             }
 
             function simpleInverseAndThen() {
@@ -664,7 +768,7 @@
                         return cLenBC.cset([], c, b);
                     }, a);
                 };
-                return _defineContextLen(simpleCget, simpleCset, cLenAB.extract, cAndThenOptions, cAndThenPartialPoints, selfPointer);
+                return _defineContextLen(simpleCget, simpleCset, cLenAB.extract, cAndThenSpecification);
             }
 
             function realCAndThen() {
@@ -688,7 +792,7 @@
                         });
                     }).flatten(true).value();
                 };
-                return _defineContextLen(composedCget, composedCset, composedExtactor, cAndThenOptions, cAndThenPartialPoints, selfPointer);
+                return _defineContextLen(composedCget, composedCset, composedExtactor, cAndThenSpecification);
             }
         }
 
@@ -701,7 +805,7 @@
             contextLenFromLen: _contextLenFromLen,
             contextLenComposition: _contextAndThenComposition
         };
-    })(underscoreRef, lensesModule);
+    })(underscoreRef, lensesModule, booleanFunctionsModule);
 
     var publicApiModule = (function (_, lenses, contextLenses) {
 
@@ -735,6 +839,8 @@
                 mapcLen.pointers[part] = mapcLen;
                 mapcLen.spec = _.clone(mapcLen.spec);
                 mapcLen.spec.selfPointer = part;
+                // "{:anyName}" -> "anyName"
+                mapcLen.spec.contextMap = [part.substr(2, part.length - 3)];
                 mapcLen.spec.signature = part;
                 return mapcLen;
             }
@@ -788,10 +894,14 @@
             var crossContextSize = Aclen.spec.contextSize + Bclen.spec.contextSize;
             var crossValueSize = Aclen.spec.valueSize + Bclen.spec.valueSize;
             var crossProductSignature = Aclen.spec.signature + " X " + Bclen.spec.signature;
-            var crossProductOptions = {
+            var crossProductSpecification = {
                 contextSize: crossContextSize,
                 valueSize: crossValueSize,
-                signature: crossProductSignature
+                signature: crossProductSignature,
+                pointers: {},
+                contextMap: Aclen.spec.contextMap.concat(Bclen.spec.contextMap),
+                valueMap: Aclen.spec.valueMap.concat(Bclen.spec.valueMap),
+                selfPointer: void(0)
             };
 
             function crossCget(context, a) {
@@ -839,7 +949,7 @@
                 }).flatten(true).value();
             }
 
-            var finalCross = contextLenses.defineContextLen(crossCget, crossCset, crossExtactor, crossProductOptions);
+            var finalCross = contextLenses.defineContextLen(crossCget, crossCset, crossExtactor, crossProductSpecification);
             finalCross.signature = crossProductSignature;
             return finalCross;
         }
@@ -858,5 +968,10 @@
         tableIterators: tableIteratorModule,
         api: publicApiModule
     };
+    if (typeof define === 'function' && define.amd) {
+        define('eelnss', ['underscore'], function (_) {
+            return eelnss;
+        });
+    }
 
 })(this);

@@ -56,7 +56,7 @@
                     }
                 }
             }, "Session created - OK");
-        var sessionDeleteLen = sessionLen.pointers["app.sessions.{:sessionID}"].bindContext(["s1"]);
+        var sessionDeleteLen = sessionLen.spec.pointers["app.sessions.{:sessionID}"].bindContext(["s1"]);
         state = sessionDeleteLen.set(undefined, state);
         propEqual(state,
             {
@@ -67,5 +67,31 @@
             }, "Session deleted - OK");
 
 
+    });
+
+    test('Find specific values', function () {
+        var usersLen = eelnss.api.buildContextLen("app.users.{:uID}.(email,name,isActive)");
+        var users = [
+            ["u1", "admin@pmsoft.eu", "administrator", true],
+            ["u2", "normal@pmsoft.eu", "user", true],
+            ["u3", "inactive@pmsoft.eu", "inactive", false]
+        ];
+        var state = {};
+        state = usersLen.lset(users, state);
+
+        propEqual(usersLen.spec.contextMap, ["uID"], "contextMap - OK");
+        propEqual(usersLen.spec.valueMap, ["email","name","isActive"], "valueMap - OK");
+
+        var user = usersLen.find({
+            email: "admin@pmsoft.eu",
+            isActive: true
+        }).on(state);
+        propEqual(user, [["u1", "admin@pmsoft.eu", "administrator", true]], "find positive - OK");
+
+        user = usersLen.find({
+            email: "admin@pmsoft.eu",
+            isActive: false
+        }).on(state);
+        propEqual(user, [], "find positive - OK");
     });
 })();
