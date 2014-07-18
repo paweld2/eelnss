@@ -235,6 +235,7 @@ For:
                     <span class="hljs-keyword">return</span> pullResult;
                 };
             }
+
             <span class="hljs-keyword">return</span> _tableIterator(pullFromSourceBuilder, contextValueSizes);
         }
 
@@ -298,9 +299,9 @@ contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where
             <span class="hljs-keyword">var</span> args = <span class="hljs-built_in">Array</span>.prototype.slice.call(<span class="hljs-built_in">arguments</span>);
             <span class="hljs-keyword">var</span> head = args[<span class="hljs-number">0</span>];
             <span class="hljs-keyword">var</span> tail = _.tail(args);
-            <span class="hljs-keyword">return</span> _.reduce(tail, crossProductTableIterators, head);
+            <span class="hljs-keyword">return</span> _.reduce(tail, _crossProductTableIteratorsReduction, head);
 
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossProductTableIterators</span><span class="hljs-params">(aIterator, bIterator)</span> {</span>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_crossProductTableIteratorsReduction</span><span class="hljs-params">(aIterator, bIterator)</span> {</span>
                 <span class="hljs-keyword">var</span> aContextValuesSizes = aIterator.spec.contextValueSizes;
                 <span class="hljs-keyword">var</span> bContextValuesSizes = bIterator.spec.contextValueSizes;
                 <span class="hljs-keyword">var</span> crossIteratorExtractorBuilder = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
@@ -419,8 +420,8 @@ contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where
             <span class="hljs-keyword">var</span> head = tableAndSize[<span class="hljs-number">0</span>];
             <span class="hljs-keyword">var</span> tail = _.tail(tableAndSize);
 
-            <span class="hljs-keyword">return</span> _.reduce(tail, _crossProductTableIterators, head);
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_crossProductTableIterators</span><span class="hljs-params">(a, b)</span> {</span>
+            <span class="hljs-keyword">return</span> _.reduce(tail, _crossProductTablesReduction, head);
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_crossProductTablesReduction</span><span class="hljs-params">(a, b)</span> {</span>
                 <span class="hljs-keyword">var</span> aTable = a[<span class="hljs-number">0</span>];
                 <span class="hljs-keyword">var</span> aContextValueSizes = a[<span class="hljs-number">1</span>];
                 <span class="hljs-keyword">var</span> aContextSize = aContextValueSizes.length;
@@ -436,6 +437,7 @@ contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where
                 }).flatten(<span class="hljs-literal">true</span>).value();
             }
         }
+
         <span class="hljs-keyword">return</span> {
             tableIterator: _tableIterator,
             tableIteratorFromTable: _tableIteratorFromTable,
@@ -448,12 +450,15 @@ contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where
 
     <span class="hljs-keyword">var</span> lensesModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_)</span> {</span>
 
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_defineLen</span><span class="hljs-params">(getter, setter, options)</span> {</span>
-            <span class="hljs-keyword">var</span> opt = options || {};
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_defineLen</span><span class="hljs-params">(getter, setter, specification)</span> {</span>
+            _assert(_.has(specification, <span class="hljs-string">"signature"</span>), <span class="hljs-string">"No signature in specification"</span>);
+            _assert(_.has(specification, <span class="hljs-string">"valueSize"</span>), <span class="hljs-string">"No valueSize in specification"</span>);
+            _assert(_.has(specification, <span class="hljs-string">"valueMap"</span>), <span class="hljs-string">"No valueMap in specification"</span>);
             <span class="hljs-keyword">var</span> len = {};
             len.spec = {
-                signature: opt.signature || <span class="hljs-string">"not provided"</span>,
-                valueSize: opt.valueSize || <span class="hljs-number">1</span>
+                signature: specification.signature,
+                valueSize: specification.valueSize,
+                valueMap: specification.valueMap
             };
             len.get = getter;
             len.set = setter;
@@ -469,7 +474,7 @@ contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where
 
         <span class="hljs-keyword">var</span> _nilLen = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">nilGetter</span><span class="hljs-params">(a)</span> {</span>
-                <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
+                <span class="hljs-keyword">return</span> <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
             }
 
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">nilSetter</span><span class="hljs-params">(b, a)</span> {</span>
@@ -478,7 +483,8 @@ contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where
 
             <span class="hljs-keyword">return</span> _defineLen(nilGetter, nilSetter, {
                 signature: <span class="hljs-string">"nil"</span>,
-                valueSize: <span class="hljs-number">0</span>
+                valueSize: <span class="hljs-number">0</span>,
+                valueMap: []
             });
         })();
 
@@ -493,7 +499,8 @@ contextValues: new values on contexts [v_m_1,v_m_2,..,v</em>(m+1)_1,….], where
 
             <span class="hljs-keyword">return</span> _defineLen(idGetter, idSetter, {
                 signature: <span class="hljs-string">"ID"</span>,
-                valueSize: <span class="hljs-number">1</span>
+                valueSize: <span class="hljs-number">1</span>,
+                valueMap: [<span class="hljs-string">"ID"</span>]
             });
         })();</pre></div></div>
             
@@ -529,7 +536,8 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
             <span class="hljs-keyword">var</span> valueSize = lenAB.spec.valueSize * lenBC.spec.valueSize;
             <span class="hljs-keyword">return</span> _defineLen(andThenGetter, andThenSetter, {
                 signature: signature,
-                valueSize: valueSize
+                valueSize: valueSize,
+                valueMap: lenBC.spec.valueMap
             });
         }
 
@@ -598,7 +606,11 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                 <span class="hljs-keyword">return</span> _.chain(a).clone().extend(extendO).value();
             }
 
-            <span class="hljs-keyword">return</span> _defineLen(fieldGetter, fieldSetter, fieldName);
+            <span class="hljs-keyword">return</span> _defineLen(fieldGetter, fieldSetter, {
+                signature: fieldName,
+                valueSize: <span class="hljs-number">1</span>,
+                valueMap: [fieldName]
+            });
         }
 
         <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_fieldLenLeaf</span><span class="hljs-params">(fieldName)</span> {</span>
@@ -635,13 +647,20 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                 }, a);
             }
 
-            <span class="hljs-keyword">var</span> telescopeSignature = _.reduce(listOfLens, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(accum, len)</span> {</span>
+            <span class="hljs-keyword">var</span> telescopeSignature = _.reduce(listOfLens, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(accum, len, index)</span> {</span>
+                <span class="hljs-keyword">if</span> (index === listOfLens.length - <span class="hljs-number">1</span>) {
+                    <span class="hljs-keyword">return</span> accum + len.spec.signature;
+                }
                 <span class="hljs-keyword">return</span> accum + len.spec.signature + <span class="hljs-string">","</span>;
             }, <span class="hljs-string">"("</span>) + <span class="hljs-string">")"</span>;
+            <span class="hljs-keyword">var</span> telescopeValueMap = _.chain(listOfLens).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(len)</span> {</span>
+                <span class="hljs-keyword">return</span> len.spec.valueMap;
+            }).flatten(<span class="hljs-literal">true</span>).value();
 
             <span class="hljs-keyword">return</span> _defineLen(telescopeGetter, telescopeSetter, {
                 signature: telescopeSignature,
-                valueSize: listOfLens.length
+                valueSize: listOfLens.length,
+                valueMap: telescopeValueMap
             });
         }
 
@@ -671,7 +690,30 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
             andThenCompose: _andThenCompose,
             nestedFieldBuilder: _buildLenFromNestedFieldsExpression
         };
-    })(underscoreRef);</pre></div></div>
+    })(underscoreRef);
+
+    <span class="hljs-keyword">var</span> booleanFunctionsModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_andComposition</span><span class="hljs-params">(elements)</span> {</span>
+            <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(state)</span> {</span>
+                <span class="hljs-keyword">return</span> _.every(elements, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(testSubFunction)</span> {</span>
+                    <span class="hljs-keyword">return</span> testSubFunction(state);
+                });
+            };
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_orComposition</span><span class="hljs-params">(elements)</span> {</span>
+            <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(state)</span> {</span>
+                <span class="hljs-keyword">return</span> _.some(elements, <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(testSubFunction)</span> {</span>
+                    <span class="hljs-keyword">return</span> testSubFunction(state);
+                });
+            };
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_buildBooleanCheckerForArrayValue</span><span class="hljs-params">(expectedValue, indexInArray)</span> {</span>
+            <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(stateAsArray)</span> {</span>
+                <span class="hljs-keyword">return</span> stateAsArray[indexInArray] === expectedValue;
+            };
+        }</pre></div></div>
             
         </li>
         
@@ -682,38 +724,43 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
-              <p>Context is a single value</p>
+              <p>Build a Array =&gt; bool function.
+arrayNamesSpecification is a map {columnName -&gt; indexInArray }
+queryObject encode a list of boolean criteria.
+AND case: each key is a columnName and value is not an object
+OR case: there is a key that contains a object.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> contextLensesModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_, lenses)</span> {</span>
-        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_defineContextLen</span><span class="hljs-params">(contextGetter, contextSetter, contextExtractor, options)</span> {</span>
-            <span class="hljs-keyword">var</span> opt = options || {};
-            <span class="hljs-keyword">var</span> clen = {};
-            clen.spec = {
-                contextSize: opt.contextSize || <span class="hljs-number">0</span>,
-                valueSize: opt.valueSize || <span class="hljs-number">1</span>,
-                signature: opt.signature || <span class="hljs-string">"not provider"</span>
-            };
-            clen.spec.size = clen.spec.contextSize + clen.spec.valueSize;
-            clen.cget = contextGetter;
-            clen.cset = contextSetter;
-            clen.extract = contextExtractor;
-            clen.cmod = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, f, a)</span> {</span>
-                <span class="hljs-keyword">return</span> clen.cset(context, f(clen.cget(context, a)), a);
-            };
-            <span class="hljs-keyword">if</span> (clen.spec.contextSize == <span class="hljs-number">0</span>) {
-                clen.lget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(container)</span> {</span>
-                    <span class="hljs-keyword">var</span> contextWithValue;
-                    <span class="hljs-keyword">if</span> (clen.spec.valueSize === <span class="hljs-number">1</span>) {
-                        contextWithValue = [clen.cget([], container)];
-                    } <span class="hljs-keyword">else</span> {
-                        contextWithValue = clen.cget([], container);
-                    }
-                    <span class="hljs-keyword">return</span> [contextWithValue];
-                };
-                clen.lset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listContextValue, container)</span> {</span>
-                    <span class="hljs-keyword">if</span> (listContextValue.length === <span class="hljs-number">0</span>) {</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_arrayBooleanFromQueryObject</span><span class="hljs-params">(arrayNamesSpecification, queryObject)</span> {</span>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_buildSingleCriteria</span><span class="hljs-params">(value, indexNumber)</span> {</span>
+                <span class="hljs-keyword">if</span> (_.isObject(value)) {
+                    <span class="hljs-keyword">return</span> _arrayBooleanFromQueryObject(arrayNamesSpecification, value);
+                } <span class="hljs-keyword">else</span> {
+                    <span class="hljs-keyword">return</span> _buildBooleanCheckerForArrayValue(value, indexNumber);
+                }
+            }
+
+            <span class="hljs-keyword">var</span> isOr = _.chain(queryObject).values().some(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(value)</span> {</span>
+                <span class="hljs-keyword">return</span> _.isObject(value);
+            }).value();
+            <span class="hljs-keyword">var</span> singleCriteria = _.chain(queryObject).keys().map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(key)</span> {</span>
+                <span class="hljs-keyword">var</span> value = queryObject[key];
+                <span class="hljs-keyword">var</span> indexValue = arrayNamesSpecification[key];
+                <span class="hljs-keyword">return</span> _buildSingleCriteria(value, indexValue);
+            }).value();
+            <span class="hljs-keyword">if</span> (isOr) {
+                <span class="hljs-keyword">return</span> _orComposition(singleCriteria);
+            } <span class="hljs-keyword">else</span> {
+                <span class="hljs-keyword">return</span> _andComposition(singleCriteria);
+            }
+        }
+
+        <span class="hljs-keyword">return</span> {
+            buildCriteria: _arrayBooleanFromQueryObject
+        };
+
+    })(underscoreRef);</pre></div></div>
             
         </li>
         
@@ -724,22 +771,61 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-20">&#182;</a>
               </div>
-              <p>single len, set of [] must be mapped to set of [[undefined]]</p>
+              <p>Context is a single value</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>                        <span class="hljs-keyword">return</span> clen.cset([], <span class="hljs-literal">undefined</span>, container);
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> contextLensesModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_, lenses, booleanFunctions)</span> {</span>
+        <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_defineContextLen</span><span class="hljs-params">(contextGetter, contextSetter, contextExtractor, specification)</span> {</span>
+            _assert(_.has(specification, <span class="hljs-string">"contextSize"</span>), <span class="hljs-string">"No contextSize in specification"</span>);
+            _assert(_.has(specification, <span class="hljs-string">"valueSize"</span>), <span class="hljs-string">"No valueSize in specification"</span>);
+            _assert(_.has(specification, <span class="hljs-string">"signature"</span>), <span class="hljs-string">"No signature in specification"</span>);
+            _assert(_.has(specification, <span class="hljs-string">"pointers"</span>), <span class="hljs-string">"No pointers in specification"</span>);
+            _assert(_.has(specification, <span class="hljs-string">"contextMap"</span>), <span class="hljs-string">"No contextMap in specification"</span>);
+            _assert(_.has(specification, <span class="hljs-string">"valueMap"</span>), <span class="hljs-string">"No valueMap in specification"</span>);
+            <span class="hljs-keyword">var</span> opt = specification || {};
+            <span class="hljs-keyword">var</span> clen = {};
+            clen.spec = {
+                contextSize: opt.contextSize,
+                valueSize: opt.valueSize,
+                signature: opt.signature,
+                pointers: opt.pointers,
+                contextMap: opt.contextMap,
+                valueMap: opt.valueMap,
+                selfPointer: opt.selfPointer
+            };
+            <span class="hljs-keyword">if</span> (clen.spec.selfPointer) {
+                clen.spec.pointers[clen.spec.selfPointer] = clen;
+            }
+            clen.spec.size = clen.spec.contextSize + clen.spec.valueSize;
+            clen.cget = contextGetter;
+            clen.cset = contextSetter;
+            clen.extract = contextExtractor;
+            clen.cmod = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context, f, a)</span> {</span>
+                <span class="hljs-keyword">return</span> clen.cset(context, f(clen.cget(context, a)), a);
+            };
+            <span class="hljs-keyword">if</span> (clen.spec.contextSize === <span class="hljs-number">0</span>) {
+                clen.lget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(container)</span> {</span>
+                    <span class="hljs-keyword">var</span> contextWithValue;
+                    <span class="hljs-keyword">if</span> (clen.spec.valueSize === <span class="hljs-number">1</span>) {
+                        contextWithValue = [clen.cget([], container)];
+                    } <span class="hljs-keyword">else</span> {
+                        contextWithValue = clen.cget([], container);
                     }
-                    <span class="hljs-keyword">return</span> _listContextSetter(clen, listContextValue, container);
+                    <span class="hljs-keyword">return</span> [contextWithValue];
                 };
+
             } <span class="hljs-keyword">else</span> {
                 clen.lget = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(container)</span> {</span>
                     <span class="hljs-keyword">return</span> _listContextGetter(clen, container);
                 };
-                clen.lset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listContextValue, container)</span> {</span>
-                    <span class="hljs-keyword">return</span> _listContextSetter(clen, listContextValue, container);
-                };
-            }</pre></div></div>
+            }
+            clen.lset = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(listContextValue, container)</span> {</span>
+                <span class="hljs-keyword">if</span> (_.isUndefined(listContextValue) || listContextValue.length === <span class="hljs-number">0</span>) {
+                    <span class="hljs-keyword">return</span> clen.cset([], <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>), container);
+                }
+                <span class="hljs-keyword">return</span> _listContextSetter(clen, listContextValue, container);
+            };</pre></div></div>
             
         </li>
         
@@ -764,7 +850,8 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                 };
                 <span class="hljs-keyword">return</span> lenses.defineLen(bindedGet, bindedSet, {
                     signature: clen.spec.signature,
-                    valueSize: clen.spec.valueSize
+                    valueSize: clen.spec.valueSize,
+                    valueMap: clen.spec.valueMap
                 });
             };
             clen.bindContextValue = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(contextAndValue)</span> {</span>
@@ -778,8 +865,38 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                     context: _context
                 };
             };
+            clen.find = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(queryCriteria)</span>{</span>
+                <span class="hljs-keyword">var</span> arrayColumns = clen.spec.contextMap.concat(clen.spec.valueMap);
+                <span class="hljs-keyword">var</span> arraySpec = _.chain(arrayColumns).reduce(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(spec,colName,index)</span>{</span>
+                    spec[colName] = index;
+                    <span class="hljs-keyword">return</span> spec;
+                }, {}).value();
+                <span class="hljs-keyword">var</span> criteria = booleanFunctions.buildCriteria(arraySpec,queryCriteria);
+                <span class="hljs-keyword">return</span> {
+                    on: <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(state)</span>{</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>TODO use internal iterators and make a fast filter for nested lenses</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                        <span class="hljs-keyword">return</span> _.chain(clen.lget(state)).filter(<span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">(arrayValues)</span>{</span>
+                            <span class="hljs-keyword">return</span> criteria(arrayValues);
+                        }).value();
+                    }
+                };
+            };
             <span class="hljs-keyword">return</span> clen;
         }
+
 
         <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_listContextGetter</span><span class="hljs-params">(cLen, container)</span> {</span>
             <span class="hljs-keyword">return</span> _.chain(cLen.extract(container)).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(context)</span> {</span>
@@ -817,7 +934,11 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
             <span class="hljs-keyword">return</span> _defineContextLen(cgetFromLen, csetFromLen, _emptyExtractor, {
                     contextSize: <span class="hljs-number">0</span>,
                     valueSize: len.spec.valueSize,
-                    signature: len.spec.signature
+                    signature: len.spec.signature,
+                    pointers: {},
+                    contextMap: [],
+                    valueMap: len.spec.valueMap,
+                    selfPointer: len.spec.signature
                 }
             );
         }
@@ -828,6 +949,9 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
 
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cgetMap</span><span class="hljs-params">(context, a)</span> {</span>
                 _assert(_.isArray(context), <span class="hljs-string">"context for map must be a single value"</span>);
+                <span class="hljs-keyword">if</span> (fillEmpty &amp;&amp; context.length === <span class="hljs-number">0</span>) {
+                    <span class="hljs-keyword">return</span> {};
+                }
                 _assert(context.length === <span class="hljs-number">1</span>, <span class="hljs-string">"context for map must be a single value"</span>);
                 <span class="hljs-keyword">var</span> key = context[<span class="hljs-number">0</span>];
                 <span class="hljs-keyword">var</span> value = a[key];
@@ -839,10 +963,17 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
 
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">csetMap</span><span class="hljs-params">(context, b, a)</span> {</span>
                 _assert(_.isArray(context), <span class="hljs-string">"context for map must be a single value"</span>);
+                <span class="hljs-keyword">if</span> (context.length === <span class="hljs-number">0</span>) {
+                    <span class="hljs-keyword">return</span> a;
+                }
                 _assert(context.length === <span class="hljs-number">1</span>, <span class="hljs-string">"context for map must be a single value"</span>);
                 <span class="hljs-keyword">var</span> key = context[<span class="hljs-number">0</span>];
-                a[key] = b;
-                <span class="hljs-keyword">return</span> a;
+                <span class="hljs-keyword">if</span> (_.isUndefined(b)) {
+                    <span class="hljs-keyword">return</span> _.omit(a, key);
+                }
+                <span class="hljs-keyword">var</span> extendO = {};
+                extendO[key] = b;
+                <span class="hljs-keyword">return</span> _.chain(a).clone().extend(extendO).value();
             }
 
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">contextExtractorMap</span><span class="hljs-params">(a)</span> {</span>
@@ -858,7 +989,11 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
             <span class="hljs-keyword">return</span> _defineContextLen(cgetMap, csetMap, contextExtractorMap, {
                     contextSize: <span class="hljs-number">1</span>,
                     valueSize: <span class="hljs-number">1</span>,
-                    signature: <span class="hljs-string">"{:map}"</span>
+                    signature: <span class="hljs-string">"{:map}"</span>,
+                    pointers: {},
+                    contextMap: [<span class="hljs-string">"map"</span>],
+                    valueMap: [<span class="hljs-string">"_"</span>],
+                    selfPointer: <span class="hljs-literal">undefined</span>
                 }
             );
         }
@@ -866,18 +1001,29 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
         <span class="hljs-keyword">var</span> _mapContextLenLeaf = _mapContextLenTemplate(<span class="hljs-literal">false</span>);
         <span class="hljs-keyword">var</span> _mapContextLen = _mapContextLenTemplate(<span class="hljs-literal">true</span>);
 
-
         <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">_contextAndThenComposition</span><span class="hljs-params">(cLenAB, cLenBC)</span> {</span>
             <span class="hljs-keyword">if</span> (cLenAB === _idContextLen) {
                 <span class="hljs-keyword">return</span> cLenBC;
             }
-            <span class="hljs-keyword">var</span> cAndThenSignature = cLenAB.spec.signature + <span class="hljs-string">" cAndThen "</span> + cLenBC.spec.signature;
+            <span class="hljs-keyword">if</span> (cLenBC === _idContextLen) {
+                <span class="hljs-keyword">return</span> cLenAB;
+            }
+            <span class="hljs-keyword">var</span> cAndThenSignature = cLenAB.spec.signature + <span class="hljs-string">"."</span> + cLenBC.spec.signature;
             <span class="hljs-keyword">var</span> cAndThenContextSize = cLenAB.spec.contextSize + cLenBC.spec.contextSize;
             <span class="hljs-keyword">var</span> cAndThenValueSize = cLenAB.spec.valueSize * cLenBC.spec.valueSize;
-            <span class="hljs-keyword">var</span> cAndThenOptions = {
+            <span class="hljs-keyword">var</span> cAndThenPartialPoints = _.extend(cLenAB.spec.pointers, cLenBC.spec.pointers);
+            <span class="hljs-keyword">var</span> selfPointer;
+            <span class="hljs-keyword">if</span> (cLenAB.spec.selfPointer &amp;&amp; cLenBC.spec.selfPointer) {
+                selfPointer = cLenAB.spec.selfPointer + <span class="hljs-string">'.'</span> + cLenBC.spec.selfPointer;
+            }
+            <span class="hljs-keyword">var</span> cAndThenSpecification = {
                 contextSize: cAndThenContextSize,
                 valueSize: cAndThenValueSize,
-                signature: cAndThenSignature
+                signature: cAndThenSignature,
+                pointers: cAndThenPartialPoints,
+                contextMap: cLenAB.spec.contextMap.concat(cLenBC.spec.contextMap),
+                valueMap: cLenBC.spec.valueMap,
+                selfPointer: selfPointer
             };
 
             <span class="hljs-keyword">if</span> (cLenAB.spec.contextSize === <span class="hljs-number">0</span>) {
@@ -900,7 +1046,7 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                 <span class="hljs-keyword">var</span> simpleExtract = <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(a)</span> {</span>
                     <span class="hljs-keyword">return</span> cLenBC.extract(cLenAB.cget([], a));
                 };
-                <span class="hljs-keyword">return</span> _defineContextLen(simpleCget, simpleCset, simpleExtract, cAndThenOptions);
+                <span class="hljs-keyword">return</span> _defineContextLen(simpleCget, simpleCset, simpleExtract, cAndThenSpecification);
             }
 
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">simpleInverseAndThen</span><span class="hljs-params">()</span> {</span>
@@ -912,7 +1058,7 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                         <span class="hljs-keyword">return</span> cLenBC.cset([], c, b);
                     }, a);
                 };
-                <span class="hljs-keyword">return</span> _defineContextLen(simpleCget, simpleCset, cLenAB.extract, cAndThenOptions);
+                <span class="hljs-keyword">return</span> _defineContextLen(simpleCget, simpleCset, cLenAB.extract, cAndThenSpecification);
             }
 
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">realCAndThen</span><span class="hljs-params">()</span> {</span>
@@ -936,7 +1082,7 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                         });
                     }).flatten(<span class="hljs-literal">true</span>).value();
                 };
-                <span class="hljs-keyword">return</span> _defineContextLen(composedCget, composedCset, composedExtactor, cAndThenOptions);
+                <span class="hljs-keyword">return</span> _defineContextLen(composedCget, composedCset, composedExtactor, cAndThenSpecification);
             }
         }
 
@@ -949,7 +1095,7 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
             contextLenFromLen: _contextLenFromLen,
             contextLenComposition: _contextAndThenComposition
         };
-    })(underscoreRef, lensesModule);
+    })(underscoreRef, lensesModule, booleanFunctionsModule);
 
     <span class="hljs-keyword">var</span> publicApiModule = (<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_, lenses, contextLenses)</span> {</span>
 
@@ -964,29 +1110,25 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                 <span class="hljs-keyword">return</span> contextLenses.contextLenFromLen(lenses.telescopeCompose.apply({}, listOfLens));
             }
 
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fieldPartBuilder</span><span class="hljs-params">(part, last)</span> {</span></pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-22">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-22">&#182;</a>
-              </div>
-              <p>TODO parameter name is not used, maybe for cross product will be necessary.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">if</span> (last) {
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fieldPartBuilder</span><span class="hljs-params">(part, last)</span> {</span>
+                <span class="hljs-keyword">if</span> (last) {
                     <span class="hljs-keyword">return</span> contextLenses.contextLenFromLen(lenses.fieldLenLeaf(part));
                 } <span class="hljs-keyword">else</span> {
                     <span class="hljs-keyword">return</span> contextLenses.contextLenFromLen(lenses.fieldLen(part));
                 }
             }
 
-            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">mapPartBuilder</span><span class="hljs-params">(part, last)</span> {</span></pre></div></div>
+            <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">mapPartBuilder</span><span class="hljs-params">(part, last)</span> {</span>
+                <span class="hljs-keyword">var</span> mapcLen;
+                <span class="hljs-keyword">if</span> (last) {
+                    mapcLen = contextLenses.mapContextLenLeaf;
+                } <span class="hljs-keyword">else</span> {
+                    mapcLen = _.clone(contextLenses.mapContextLen);
+                }
+                mapcLen.pointers = {};
+                mapcLen.pointers[part] = mapcLen;
+                mapcLen.spec = _.clone(mapcLen.spec);
+                mapcLen.spec.selfPointer = part;</pre></div></div>
             
         </li>
         
@@ -997,15 +1139,13 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
-              <p>TODO parameter name is not used, maybe for cross product will be necessary.</p>
+              <p>“{:anyName}” -&gt; “anyName”</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>                <span class="hljs-keyword">if</span> (last) {
-                    <span class="hljs-keyword">return</span> contextLenses.mapContextLenLeaf;
-                } <span class="hljs-keyword">else</span> {
-                    <span class="hljs-keyword">return</span> contextLenses.mapContextLen;
-                }
+            <div class="content"><div class='highlight'><pre>                mapcLen.spec.contextMap = [part.substr(<span class="hljs-number">2</span>, part.length - <span class="hljs-number">3</span>)];
+                mapcLen.spec.signature = part;
+                <span class="hljs-keyword">return</span> mapcLen;
             }</pre></div></div>
             
         </li>
@@ -1108,10 +1248,14 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
             <span class="hljs-keyword">var</span> crossContextSize = Aclen.spec.contextSize + Bclen.spec.contextSize;
             <span class="hljs-keyword">var</span> crossValueSize = Aclen.spec.valueSize + Bclen.spec.valueSize;
             <span class="hljs-keyword">var</span> crossProductSignature = Aclen.spec.signature + <span class="hljs-string">" X "</span> + Bclen.spec.signature;
-            <span class="hljs-keyword">var</span> crossProductOptions = {
+            <span class="hljs-keyword">var</span> crossProductSpecification = {
                 contextSize: crossContextSize,
                 valueSize: crossValueSize,
-                signature: crossProductSignature
+                signature: crossProductSignature,
+                pointers: {},
+                contextMap: Aclen.spec.contextMap.concat(Bclen.spec.contextMap),
+                valueMap: Aclen.spec.valueMap.concat(Bclen.spec.valueMap),
+                selfPointer: <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>)
             };
 
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossCget</span><span class="hljs-params">(context, a)</span> {</span>
@@ -1131,7 +1275,7 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
             <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">crossCset</span><span class="hljs-params">(context, c, a)</span> {</span>
                 <span class="hljs-keyword">if</span> (_.isUndefined(c)) {
                     c = _.range(crossValueSize).map(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span> {</span>
-                        <span class="hljs-keyword">return</span> <span class="hljs-literal">undefined</span>;
+                        <span class="hljs-keyword">return</span> <span class="hljs-keyword">void</span>(<span class="hljs-number">0</span>);
                     });
                 }
                 <span class="hljs-keyword">var</span> Acontext = context.slice(<span class="hljs-number">0</span>, Aclen.spec.contextSize);
@@ -1159,7 +1303,7 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
                 }).flatten(<span class="hljs-literal">true</span>).value();
             }
 
-            <span class="hljs-keyword">var</span> finalCross = contextLenses.defineContextLen(crossCget, crossCset, crossExtactor, crossProductOptions);
+            <span class="hljs-keyword">var</span> finalCross = contextLenses.defineContextLen(crossCget, crossCset, crossExtactor, crossProductSpecification);
             finalCross.signature = crossProductSignature;
             <span class="hljs-keyword">return</span> finalCross;
         }
@@ -1178,6 +1322,11 @@ Len[A,B] ~&gt; Len[B,C] =&gt; Len[A,C]</p>
         tableIterators: tableIteratorModule,
         api: publicApiModule
     };
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> define === <span class="hljs-string">'function'</span> &amp;&amp; define.amd) {
+        define(<span class="hljs-string">'eelnss'</span>, [<span class="hljs-string">'underscore'</span>], <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(_)</span> {</span>
+            <span class="hljs-keyword">return</span> eelnss;
+        });
+    }
 
 })(<span class="hljs-keyword">this</span>);</pre></div></div>
             

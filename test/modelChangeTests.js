@@ -70,7 +70,8 @@
     });
 
     test('Find specific values', function () {
-        var usersLen = eelnss.api.buildContextLen("app.users.{:uID}.(email,name,isActive)");
+        debugger;
+        var usersLen = eelnss.api.buildContextLen("app.users.cos.nested.more.{:uID}.(email,data.name,isActive)");
         var users = [
             ["u1", "admin@pmsoft.eu", "administrator", true],
             ["u2", "normal@pmsoft.eu", "user", true],
@@ -80,18 +81,32 @@
         state = usersLen.lset(users, state);
 
         propEqual(usersLen.spec.contextMap, ["uID"], "contextMap - OK");
-        propEqual(usersLen.spec.valueMap, ["email","name","isActive"], "valueMap - OK");
+        propEqual(usersLen.spec.valueMap, ["email", "name", "isActive"], "valueMap - OK");
 
         var user = usersLen.find({
             email: "admin@pmsoft.eu",
             isActive: true
         }).on(state);
-        propEqual(user, [["u1", "admin@pmsoft.eu", "administrator", true]], "find positive - OK");
+        propEqual(user, [
+            ["u1", "admin@pmsoft.eu", "administrator", true]
+        ], "find positive - OK");
 
         user = usersLen.find({
             email: "admin@pmsoft.eu",
             isActive: false
         }).on(state);
         propEqual(user, [], "find positive - OK");
+
+        user = usersLen.find({
+            isAdmistrator: {
+                email: "admin@pmsoft.eu",
+                isActive: true
+            },
+            isActive: false
+        }).on(state);
+        propEqual(user, [
+            ["u1", "admin@pmsoft.eu", "administrator", true],
+            ["u3", "inactive@pmsoft.eu", "inactive", false]
+        ], "find with or condition positive - OK");
     });
 })();
