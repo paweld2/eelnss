@@ -70,7 +70,6 @@
     });
 
     test('Find specific values', function () {
-        debugger;
         var usersLen = eelnss.api.buildContextLen("app.users.cos.nested.more.{:uID}.(email,data.name,isActive)");
         var users = [
             ["u1", "admin@pmsoft.eu", "administrator", true],

@@ -954,8 +954,17 @@
             return finalCross;
         }
 
+        function _buildLen(lenExpression) {
+            var contextLen = _buildNestedContextLen(lenExpression);
+            if( contextLen.spec.contextSize > 0 ){
+                throw "Len expression contains a context parameter: " + lenExpression;
+            }
+            return contextLen.bindContext([]);
+        }
+
 
         return {
+            buildLen : _buildLen,
             buildContextLen: _buildNestedContextLen,
             crossProduct: _crossProduct
         };
