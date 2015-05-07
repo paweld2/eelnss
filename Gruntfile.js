@@ -20,7 +20,7 @@ module.exports = function (grunt) {
                 src: 'Gruntfile.js'
             },
             src: {
-                src: ['eelnss.js']
+                src: ['eelnss.js','eetables.js']
             },
             test: {
                 src: ['test/*.js','test/vendor/tddUtils.js']
@@ -47,6 +47,30 @@ module.exports = function (grunt) {
                     base: '.'
                 }
             }
+        },
+        uglify: {
+            eelnss: {
+                options: {
+                    sourceMap: true,
+                    preserveComments:false,
+                    compress:true,
+                    sourceMapName: 'eelnss-min.map'
+                },
+                files: {
+                    'eelnss-min.js': ['eelnss.js']
+                }
+            },
+            eetables: {
+                options: {
+                    sourceMap: true,
+                    preserveComments:false,
+                    compress:true,
+                    sourceMapName: 'eetables-min.map'
+                },
+                files: {
+                    'eetables-min.js': ['eetables.js']
+                }
+            }
         }
     });
 
@@ -56,8 +80,9 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-contrib-connect');
+    grunt.loadNpmTasks('grunt-contrib-uglify');
 
-    grunt.registerTask('test', ['jshint']);
+    grunt.registerTask('test', ['jshint','qunit']);
 
     // Default task.
     grunt.registerTask('default', [ 'dev']);
@@ -65,5 +90,5 @@ module.exports = function (grunt) {
 
     grunt.registerTask('dev', [  'connect:devserver', 'watch']);
 
-
+    grunt.registerTask('build', [ 'uglify']);
 };

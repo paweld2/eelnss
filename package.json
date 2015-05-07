@@ -16,14 +16,11 @@
         "grunt-contrib-qunit": "~0.5.1",
         "grunt-contrib-watch": "~0.6.1",
         "grunt-contrib-jshint": "~0.10.0",
-        "docco": "0.6.x",
-        "phantomjs": "1.9.7-9",
-        "uglify-js": "2.4.x"
+        "grunt-contrib-uglify": "~0.9.1",
+        "docco": "0.6.x"
     },
     "scripts": {
-        "test": "phantomjs test/vendor/runner.js test/index.html?noglobals=true",
-        "build": "uglifyjs eelnss.js -c \"evaluate=false\" --comments \"/    .*/\" -m --source-map eelnss-min.map -o eelnss-min.js",
-        "doc": "docco eelnss.js"
+        "doc": "docco eelnss.js eetables.js"
     },
     "licenses": [
         {
@@ -31,5 +28,5 @@
             "url": "https://raw.github.com/paweld2/eelnss/master/LICENSE"
         }
     ],
-    "files": ["eelnss.js", "eelnss-min.js", "LICENSE"]
+    "files": ["eelnss.js", "eelnss-min.js", "eetables.js", "eetables-min.js", "LICENSE"]
 }

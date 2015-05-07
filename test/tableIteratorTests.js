@@ -52,7 +52,7 @@
                 }
             };
         };
-        return eelnss.tableIterators.tableIteratorBuilder(contextValueSizes, rowExtractorBuilder);
+        return eetables.tableIterators.tableIteratorBuilder(contextValueSizes, rowExtractorBuilder);
     };
 
     var trimToContextOnly = function (table, contextValuesSizes) {
@@ -69,7 +69,7 @@
             ["x", "y"],
             ["p", "q"]
         ]);
-        var recreatedTable = eelnss.tableIterators.buildTableFromIterator(iteratorFactory());
+        var recreatedTable = eetables.tableIterators.buildTableFromIterator(iteratorFactory());
         var expectedContextKeys = [
             ["a", "x", "p"],
             ["a", "x", "q"],
@@ -100,17 +100,17 @@
         // Number of context values  = 2
         // Context values size       = [2,1]
         // table                     = testdata
-        var iteratorFactory = eelnss.tableIterators.tableIteratorFromTable([2, 1], testData);
+        var iteratorFactory = eetables.tableIterators.tableIteratorFromTable([2, 1], testData);
 
         // The build table function must recreate a table from a iterator
-        var recreatedTable = eelnss.tableIterators.buildTableFromIterator(iteratorFactory());
+        var recreatedTable = eetables.tableIterators.buildTableFromIterator(iteratorFactory());
         propEqual(recreatedTable, testData, "Table iterator recreates tables correctly");
     });
     test("Table <-> TableIterator mapping for 1 [5]", function () {
 
         var testData = testUtilFunctions.contextLensValuesGenerator(2, 1, 5);
-        var iteratorFactory = eelnss.tableIterators.tableIteratorFromTable([5], testData);
-        var recreatedTable = eelnss.tableIterators.buildTableFromIterator(iteratorFactory());
+        var iteratorFactory = eetables.tableIterators.tableIteratorFromTable([5], testData);
+        var recreatedTable = eetables.tableIterators.buildTableFromIterator(iteratorFactory());
         propEqual(recreatedTable, testData, "Table iterator recreates tables correctly");
     });
     test("Table <-> TableIterator mapping for 2 [3,2]", function () {
@@ -119,9 +119,9 @@
             return testUtilFunctions.generateUniqueKeySet(nrOfValue);
         }).value();
         var randomIF = randomIteratorFactory(contextValuesSize, keysPerContext);
-        var randomTable = eelnss.tableIterators.buildTableFromIterator(randomIF());
-        var tableIteratorFactory = eelnss.tableIterators.tableIteratorFromTable(contextValuesSize, randomTable);
-        propEqual(randomTable, eelnss.tableIterators.buildTableFromIterator(tableIteratorFactory()), "Random Iterator, Table Iterator and builder match on implementation");
+        var randomTable = eetables.tableIterators.buildTableFromIterator(randomIF());
+        var tableIteratorFactory = eetables.tableIterators.tableIteratorFromTable(contextValuesSize, randomTable);
+        propEqual(randomTable, eetables.tableIterators.buildTableFromIterator(tableIteratorFactory()), "Random Iterator, Table Iterator and builder match on implementation");
     });
 
     function buildRandomTableIterator(contextSize) {
@@ -147,8 +147,8 @@
         _.chain(_.range(1, 7)).map(function (contextSize) {
             var randomTableFactory = buildRandomTableIterator(contextSize);
             var randomIF = randomTableFactory.randomIF;
-            var firstRun = eelnss.tableIterators.buildTableFromIterator(randomIF());
-            var secondRun = eelnss.tableIterators.buildTableFromIterator(randomIF());
+            var firstRun = eetables.tableIterators.buildTableFromIterator(randomIF());
+            var secondRun = eetables.tableIterators.buildTableFromIterator(randomIF());
             propEqual(firstRun,secondRun,"A given random iterator provide always the same values");
         }).value();
 
@@ -161,10 +161,10 @@
             var contextKeysRanges = randomTableFactory.contextKeysRanges;
             var randomIF = randomTableFactory.randomIF;
 
-            var testData = eelnss.tableIterators.buildTableFromIterator(randomIF());
+            var testData = eetables.tableIterators.buildTableFromIterator(randomIF());
 
-            var iteratorFactory = eelnss.tableIterators.tableIteratorFromTable(valueRanges, testData);
-            var recreatedTable = eelnss.tableIterators.buildTableFromIterator(iteratorFactory());
+            var iteratorFactory = eetables.tableIterators.tableIteratorFromTable(valueRanges, testData);
+            var recreatedTable = eetables.tableIterators.buildTableFromIterator(iteratorFactory());
             propEqual(recreatedTable, testData, "Table iterator recreates tables correctly for contextSize " + contextSize + " and value ranges " + valueRanges + " with context keys ranges " + contextKeysRanges);
 
         }).value();
@@ -183,7 +183,7 @@
             ["x3", "y3a", "y3b"]
         ];
 
-        var crossTable = eelnss.tableIterators.crossProductTables([testTable1, testTable2], [
+        var crossTable = eetables.tableIterators.crossProductTables([testTable1, testTable2], [
             [3],
             [2]
         ]);
@@ -198,12 +198,12 @@
         ];
         deepEqual(crossTable, expected, "Cross product with context OK");
 
-        var crossIterator = eelnss.tableIterators.crossProductTableIterators(
-            eelnss.tableIterators.tableIteratorFromTable([3], testTable1),
-            eelnss.tableIterators.tableIteratorFromTable([2], testTable2)
+        var crossIterator = eetables.tableIterators.crossProductTableIterators(
+            eetables.tableIterators.tableIteratorFromTable([3], testTable1),
+            eetables.tableIterators.tableIteratorFromTable([2], testTable2)
         );
 
-        var projectedCross = eelnss.tableIterators.buildTableFromIterator(crossIterator());
+        var projectedCross = eetables.tableIterators.buildTableFromIterator(crossIterator());
         deepEqual(projectedCross, expected, "Cross product of iterators");
 
     });
@@ -215,17 +215,17 @@
             var tableIterators = _.chain(_.range(0, nrOfCrossTables)).map(function () {
                 return buildRandomTableIterator(_.random(1, maxContextSize)).randomIF;
             }).value();
-            var crossIterator = eelnss.tableIterators.crossProductTableIterators.apply(null,tableIterators);
+            var crossIterator = eetables.tableIterators.crossProductTableIterators.apply(null,tableIterators);
 
             var tablesContextValueSizes = _.chain(tableIterators).map(function(tableIterator){
                 return tableIterator.spec.contextValueSizes;
             }).value();
             var tablesData = _.chain(tableIterators).map(function(tableIterator){
-                return eelnss.tableIterators.buildTableFromIterator(tableIterator());
+                return eetables.tableIterators.buildTableFromIterator(tableIterator());
             }).value();
-            var crossTable = eelnss.tableIterators.crossProductTables(tablesData,tablesContextValueSizes);
+            var crossTable = eetables.tableIterators.crossProductTables(tablesData,tablesContextValueSizes);
 
-            var projectedCross = eelnss.tableIterators.buildTableFromIterator(crossIterator());
+            var projectedCross = eetables.tableIterators.buildTableFromIterator(crossIterator());
             deepEqual(projectedCross, crossTable, "Cross product of iterators");
 
         });
