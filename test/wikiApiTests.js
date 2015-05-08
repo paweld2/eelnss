@@ -134,6 +134,7 @@
             ["u3", "testUser@pmsoft.eu", "testUser", false]
         ];
         var state = {};
+        // Equivalent to update (or insert if no present)
         state = usersCLen.lset(users, state);
         propEqual(
             state,
@@ -166,6 +167,7 @@
             }
         );
 
+        //Equivalent do select * from state
         var selectUsers = usersCLen.lget(state);
         propEqual(
             selectUsers,
@@ -176,6 +178,8 @@
             ]
         );
 
+        //Equivalent to select * from state where email = 'admin@pmsoft.eu'
+        //Fileds names are taken from the telescope part of the clen.
         var adminUserSelected = usersCLen.find({
             email: "admin@pmsoft.eu"
         }).on(state);
@@ -186,6 +190,7 @@
             ]
         );
 
+        //Equivalent to update/insert where uid='u3'
         state = usersCLen.lset(
             [
                 ["u3", "testUser@pmsoft.eu", "testUser", true]
