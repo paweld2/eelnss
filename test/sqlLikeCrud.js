@@ -91,22 +91,16 @@
         );
 
         //Delete a existing value by ID
-        var idToDelete = [
-            ["id1"]
-        ];
-        state = tableClen.lset(idToDelete, state);
+        var tableClenIdRef = eelnss.api.buildContextLen("mytable.{:id}");
+        var idToDelete = [["id1"],["id3"]];
+        state = tableClenIdRef.lset(idToDelete, state);
         //state after update
         propEqual(
             state,
             {
                 "mytable": {
-                    "id1": {},
                     "id2": {
                         "firstName": "Speedy",
-                        "secondName": "Gonzalez"
-                    },
-                    "id3": {
-                        "firstName": "Pedro",
                         "secondName": "Gonzalez"
                     },
                     "id4": {
@@ -116,6 +110,13 @@
                 }
             }
         );
-
+        //select do not find the deleted elements
+        var deletedSelect = tableClen.find({
+            id: "id1"
+        }).on(state);
+        propEqual(
+            deletedSelect,
+            []
+        );
     });
 })();
