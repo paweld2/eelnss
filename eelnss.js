@@ -43,11 +43,13 @@
 
         var _nilLen = (function () {
             function nilGetter(a) {
-                return void(0);
+                //TODO implement
+                return {};
             }
 
             function nilSetter(b, a) {
-                return a;
+                //TODO implement
+                return {};
             }
 
             return _defineLen(nilGetter, nilSetter, {
@@ -59,11 +61,13 @@
 
         var _idLen = (function () {
             function idGetter(a) {
-                return a;
+                //TODO implement
+                return {};
             }
 
             function idSetter(newa, a) {
-                return newa;
+                //TODO implement
+                return {};
             }
 
             return _defineLen(idGetter, idSetter, {
@@ -80,13 +84,13 @@
                 return lenBC;
             }
             function andThenGetter(a) {
-                return lenBC.get(lenAB.get(a));
+                //TODO implement
+                return {};
             }
 
             function andThenSetter(c, a) {
-                return lenAB.mod(function (b) {
-                    return lenBC.set(c, b);
-                }, a);
+                //TODO implement
+                return {};
             }
 
             var signature = lenAB.spec.signature + "." + lenBC.spec.signature;
@@ -105,23 +109,15 @@
                 }
                 // Arrays are not valid fieldLen containers.
                 _assert(!_.isArray(a), "Arrays are not valid fieldLen containers. Field name:" + fieldName + ". Argument:" + a);
-                var value = a[fieldName];
-                // If options.fillEmpty===true, then a empty value is filled with a {} object. This is used for nested lens zeros.
-                if (fillEmpty === true && _.isUndefined(value)) {
-                    return {};
-                }
-                return value;
+                //TODO implement
+                return {};
             }
 
             function fieldSetter(b, a) {
                 // Arrays are not valid fieldLen containers.
                 _assert(!_.isArray(a), "Arrays are not valid fieldLen containers. Field name:" + fieldName + ". Argument:" + a);
-                if (_.isUndefined(b)) {
-                    return _.omit(a, fieldName);
-                }
-                var extendO = {};
-                extendO[fieldName] = b;
-                return _.chain(a).clone().extend(extendO).value();
+                //TODO implement
+                return {};
             }
 
             return _defineLen(fieldGetter, fieldSetter, {
@@ -148,21 +144,13 @@
             });
 
             function telescopeGetter(a) {
-                return _.map(listOfLens, function (singleCLen) {
-                    return singleCLen.get(a);
-                });
+                //TODO implement
+                return {};
             }
 
             function telescopeSetter(b, a) {
-                var values = b;
-                if (_.isUndefined(values)) {
-                    values = emptyValues;
-                }
-                return _.reduce(_.zip(listOfLens, values), function (finalA, len_value) {
-                    var len = len_value[0];
-                    var value = len_value[1];
-                    return len.set(value, finalA);
-                }, a);
+                //TODO implement
+                return {};
             }
 
             var telescopeSignature = _.reduce(listOfLens, function (accum, len, index) {
