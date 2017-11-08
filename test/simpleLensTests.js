@@ -39,18 +39,18 @@
             "x": "change",
             "y": "yValue"
         };
-        var l_x = eelnss.lenses.fieldLen("x");
+        var l_x = eelnss.lenses.fieldLenLeaf("x");
         equal(l_x.get(input), input.x, "getterX(input) == input.x");
         propEqual(l_x.set("change", input), inputAfterChange, "setterX(change,input) == inputAfterChange");
         contextLensesLaws.verifyLensesLaws(l_x);
     });
     test('l_x . l_y', function () {
         var l_x = eelnss.lenses.fieldLen("x");
-        var l_y = eelnss.lenses.fieldLen("y");
+        var l_y = eelnss.lenses.fieldLenLeaf("y");
 
         var XY = l_x.andThen(l_y);
         equal(XY.get({x: {y: "test"}}), "test", "getter _.x.y");
-        propEqual(XY.set("change", {}), {x: {y: "test"}}, "setter _.x.y");
+        propEqual(XY.set("change", {}), {x: {y: "change"}}, "setter _.x.y");
         contextLensesLaws.verifyLensesLaws(XY);
     });
     test('simple', function () {
