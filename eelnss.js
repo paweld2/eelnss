@@ -43,12 +43,12 @@
 
         var _nilLen = (function () {
             function nilGetter(a) {
-                //TODO implement
+                //TODO implement a getter that will return always void
                 return {};
             }
 
             function nilSetter(b, a) {
-                //TODO implement
+                //TODO implement a setter that ignores the value to set (b)
                 return {};
             }
 
@@ -61,12 +61,12 @@
 
         var _idLen = (function () {
             function idGetter(a) {
-                //TODO implement
+                //TODO implement a getter that return the same object
                 return {};
             }
 
             function idSetter(newa, a) {
-                //TODO implement
+                //TODO implement a setter that replaces a with a new value
                 return {};
             }
 
@@ -84,12 +84,12 @@
                 return lenBC;
             }
             function andThenGetter(a) {
-                //TODO implement
+                //TODO implement a getter that will extract C from A
                 return {};
             }
 
             function andThenSetter(c, a) {
-                //TODO implement
+                //TODO implement a setter that will set C in A
                 return {};
             }
 
@@ -109,14 +109,14 @@
                 }
                 // Arrays are not valid fieldLen containers.
                 _assert(!_.isArray(a), "Arrays are not valid fieldLen containers. Field name:" + fieldName + ". Argument:" + a);
-                //TODO implement
+                //TODO implement a getter that extract the fieldName from object A
                 return {};
             }
 
             function fieldSetter(b, a) {
                 // Arrays are not valid fieldLen containers.
                 _assert(!_.isArray(a), "Arrays are not valid fieldLen containers. Field name:" + fieldName + ". Argument:" + a);
-                //TODO implement
+                //TODO implement a setter that puts value B on fieldName of object A
                 return {};
             }
 
@@ -144,12 +144,12 @@
             });
 
             function telescopeGetter(a) {
-                //TODO implement
+                //TODO implement a getter that extract from object A all the values of lenses listOfLens
                 return {};
             }
 
             function telescopeSetter(b, a) {
-                //TODO implement
+                //TODO implement a setter that puts all B values on object A using the lenses listOfLens
                 return {};
             }
 
@@ -344,7 +344,7 @@
                 var criteria = booleanFunctions.buildCriteria(arraySpec, queryCriteria);
                 return {
                     on: function (state) {
-                        //TODO use internal iterators and make a fast filter for nested lenses
+                        //FIXME use internal iterators and make a fast filter for nested lenses
                         return _.chain(clen.lget(state)).filter(function (arrayValues) {
                             return criteria(arrayValues);
                         }).value();

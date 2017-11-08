@@ -81,13 +81,24 @@ var testUtilFunctions = (function () {
 // Laws checkers
 // --------------
 var contextLensesLaws = (function (utils) {
-    function checkLensesLaws(len, containerBuilder, v1, v2) {
+
+    var emptyContainerBuilder = function () {
+        return {};
+    };
+
+    function verifyLensesLaws(len) {
+        var values = utils.contextLensValuesGenerator(0, 0, 2);
+        __checkLensesLaws(len,emptyContainerBuilder,values[0][0],values[0][1])
+    }
+
+    function __checkLensesLaws(len, containerBuilder, v1, v2) {
         var zeroContainer = function () {
             return len.set(undefined, containerBuilder());
         };
+
         // set get law
-        propEqual(len.get(len.set(v1, containerBuilder())), v1, " get(set(v,c)) == v for value " + JSON.stringify(v1));
-        propEqual(len.get(len.set(v2, containerBuilder())), v2, " get(set(v,c)) == v for value " + JSON.stringify(v2));
+        equal(len.get(len.set(v1, containerBuilder())), v1, " get(set(v,c)) == v for value " + JSON.stringify(v1));
+        equal(len.get(len.set(v2, containerBuilder())), v2, " get(set(v,c)) == v for value " + JSON.stringify(v2));
         // get set law
         propEqual(len.set(len.get(zeroContainer()), zeroContainer()), zeroContainer(), " set(get(c),c) == c for zero container for values" + JSON.stringify(v1) + " , " + JSON.stringify(v2));
         var noEmptyContainer = len.set(v1, containerBuilder());
@@ -170,9 +181,6 @@ var contextLensesLaws = (function (utils) {
 
     function checkContextLenEquivalenceOnValues(cLenA, cLenB, values) {
         // setting a value give the same result
-        var emptyContainerBuilder = function () {
-            return {};
-        };
 
         //    For fast debugging use this expressions
         //    var a = cLenA.lset(values, emptyContainerBuilder());
@@ -237,7 +245,7 @@ var contextLensesLaws = (function (utils) {
     }
 
     return {
-        checkLensesLaws: checkLensesLaws,
+        verifyLensesLaws: verifyLensesLaws,
         checkContextLenEquivalence: checkContextLenEquivalence,
         checkContextLenApi: checkContextLenApi,
         checkContextLensesCrossProducts: checkContextLensesCrossProducts
