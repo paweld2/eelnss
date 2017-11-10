@@ -132,6 +132,25 @@ var contextLensesLaws = (function (utils) {
             " lset(v2,lset(v1,c)) == lset(v2,c) on "
         );
     }
+    function checkLensesLawsForContextApi(len, containerBuilder, v1, v2) {
+        var zeroContainer = function () {
+            return len.set(undefined, containerBuilder());
+        };
+        // set get law
+        propEqual(len.get(len.set(v1, containerBuilder())), v1, " get(set(v,c)) == v for value " + JSON.stringify(v1));
+        propEqual(len.get(len.set(v2, containerBuilder())), v2, " get(set(v,c)) == v for value " + JSON.stringify(v2));
+        // get set law
+        propEqual(len.set(len.get(zeroContainer()), zeroContainer()), zeroContainer(), " set(get(c),c) == c for zero container for values" + JSON.stringify(v1) + " , " + JSON.stringify(v2));
+        var noEmptyContainer = len.set(v1, containerBuilder());
+        propEqual(len.set(len.get(noEmptyContainer), noEmptyContainer), len.set(v1, containerBuilder()), " set(get(c),c) == c for noempty container ");
+
+        // set set law
+        propEqual(
+            len.set(v2, len.set(v1, containerBuilder())),
+            len.set(v2, containerBuilder()),
+            " set(v2,set(v1,c)) == set(v2,c) on container c=" + JSON.stringify(containerBuilder()) + " for values: v1=" + JSON.stringify(v1) + ", v2=" + JSON.stringify(v2)
+        );
+    }
 
     function _checkContextLenses(cLen, listOfValues) {
 
@@ -142,7 +161,7 @@ var contextLensesLaws = (function (utils) {
         _.chain(listOfValues).map(function (singleValueSet) {
             var binding = cLen.bindContextValue(singleValueSet);
             var secondValue = utils.generateUniqueKeySet(cLen.spec.valueSize);
-            checkLensesLaws(binding.len, emptyContainerBuilder, binding.value, secondValue);
+            checkLensesLawsForContextApi(binding.len, emptyContainerBuilder, binding.value, secondValue);
         });
         _checkContextLensesLaws(cLen, emptyContainerBuilder, listOfValues);
     }

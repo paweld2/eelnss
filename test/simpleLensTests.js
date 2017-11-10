@@ -65,4 +65,11 @@
         var simple = eelnss.api.buildLen("a.b.c.d.e");
         contextLensesLaws.verifyLensesLaws(simple);
     });
+    test('nilLen', function () {
+        //TODO Not a real len, just a zero like value. Comment the test after checking why it do not pass.
+        contextLensesLaws.verifyLensesLaws(eelnss.lenses.nilLen);
+    });
+    test('idLen', function () {
+        contextLensesLaws.verifyLensesLaws(eelnss.lenses.idLen);
+    });
 })();
