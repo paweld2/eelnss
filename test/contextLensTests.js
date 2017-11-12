@@ -4,11 +4,6 @@
 
     test('simple', function () {
         var simple = eelnss.api.buildContextLen("simple");
-        var input = {
-            simple: 1
-        };
-        var output = simple.cget([], input);
-        // console.log(output);
         contextLensesLaws.checkContextLenApi(simple);
     });
     test('simple.nested', function () {
@@ -21,12 +16,6 @@
     });
     test('{:mapId}', function () {
         var simple = eelnss.api.buildContextLen("{:mapId}");
-
-        var input = {
-            userXX: 1
-        };
-        var output = simple.cget(["userXX"], input);
-        console.log(output);
         contextLensesLaws.checkContextLenApi(simple);
     });
     test('simple.{:mapId}', function () {
