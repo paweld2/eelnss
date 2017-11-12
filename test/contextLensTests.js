@@ -4,6 +4,11 @@
 
     test('simple', function () {
         var simple = eelnss.api.buildContextLen("simple");
+        var input = {
+            simple: 1
+        };
+        var output = simple.cget([], input);
+        // console.log(output);
         contextLensesLaws.checkContextLenApi(simple);
     });
     test('simple.nested', function () {
@@ -16,6 +21,12 @@
     });
     test('{:mapId}', function () {
         var simple = eelnss.api.buildContextLen("{:mapId}");
+
+        var input = {
+            userXX: 1
+        };
+        var output = simple.cget(["userXX"], input);
+        console.log(output);
         contextLensesLaws.checkContextLenApi(simple);
     });
     test('simple.{:mapId}', function () {
@@ -46,11 +57,14 @@
 
         var initialData = [
             ["key1", 1, 2, 3],
-            ["key2", 1, 2, 3]
+            ["key2", 4, 5, 6]
         ];
-        var setInitial = simple.lset(initialData, {});
+        var setInitial = simple.lset(initialData, {
+            initialValue: "what will happen"
+        });
 
         propEqual(setInitial, {
+            initialValue: "what will happen",
             "a": {
                 "key1": {
                     "a": {
@@ -65,13 +79,13 @@
                 },
                 "key2": {
                     "a": {
-                        "b": 1
+                        "b": 4
                     },
                     "complex": {
-                        "nested": 3
+                        "nested": 6
                     },
                     "x": {
-                        "z": 2
+                        "z": 5
                     }
                 }
             }
@@ -81,7 +95,22 @@
 
         var target = eelnss.api.buildContextLen("person.{:cid}.(name, contact, c)");
         var persons = target.lset(tableData, {});
-
+        propEqual(persons,
+            {
+                "person": {
+                    "key1": {
+                        "c": 3,
+                        "contact": 2,
+                        "name": 1
+                    },
+                    "key2": {
+                        "c": 6,
+                        "contact": 5,
+                        "name": 4
+                    }
+                }
+            }
+        );
         var extracted = target.lget(persons);
 
         propEqual(extracted, initialData, "Initial data mapped and extracted match");
