@@ -1,0 +1,10 @@
+version: '2.0'
+services:
+  learning_lenses:
+    build:
+      context: .
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+    command: [sh, -c, "cd /app && npm install && npm install -g grunt-cli && grunt dev"]
